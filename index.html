@@ -97,6 +97,20 @@
     border-radius:999px;font-weight:600;
   }
 
+  /* ---------- 日程 ---------- */
+  .sch-date{font-size:12.5px;font-weight:800;color:var(--primary-deep);margin:16px 2px 8px;display:flex;align-items:center;gap:6px;}
+  .sch-head-first{margin-top:4px;}
+  .ev-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+    padding:11px 13px;display:flex;align-items:center;gap:11px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;}
+  .ev-time{flex-shrink:0;width:58px;text-align:center;background:var(--accent-soft);border-radius:10px;padding:6px 2px;}
+  .ev-time .t{font-size:13px;font-weight:800;color:var(--accent-deep);}
+  .ev-time .al{font-size:11px;color:var(--text-soft);}
+  .ev-main{flex:1;min-width:0;}
+  .ev-title{font-size:14.5px;font-weight:700;color:var(--text);}
+  .ev-sub{font-size:12px;color:var(--text-soft);margin-top:2px;}
+  .sch-tool-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .sch-past{opacity:.6;}
+
   /* ---------- 今日要处理 ---------- */
   .today-section{
     max-width:960px;margin:10px auto 0;padding:0 16px;
@@ -168,6 +182,7 @@
   main{max-width:960px;margin:0 auto;padding:14px 16px calc(var(--nav-h) + 96px);}
   .view.hidden{display:none;}
   .data-card.hidden{display:none;}
+  .backup-banner.hidden{display:none;}
 
   .view-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
   .view-head h2{font-size:17px;font-weight:800;display:flex;align-items:center;gap:7px;}
@@ -264,7 +279,7 @@
     padding:16px;margin-bottom:12px;box-shadow:var(--shadow);
   }
   .data-card h3{font-size:14.5px;font-weight:750;margin-bottom:10px;display:flex;align-items:center;gap:7px;}
-  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
   .stat-box{background:var(--card-warm);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;}
   .stat-num{font-size:24px;font-weight:800;color:var(--primary-deep);}
   .stat-label{font-size:11px;color:var(--text-soft);margin-top:2px;}
@@ -477,6 +492,9 @@
   <button class="nav-btn active" data-tab="tasks" onclick="setTab('tasks')">
     <span class="nicon" data-icon="task"></span><span>任务</span>
   </button>
+  <button class="nav-btn" data-tab="schedule" onclick="setTab('schedule')">
+    <span class="nicon" data-icon="calendar"></span><span>日程</span>
+  </button>
   <button class="nav-btn" data-tab="countdown" onclick="setTab('countdown')">
     <span class="nicon" data-icon="clock"></span><span>倒计时</span>
   </button>
@@ -499,6 +517,22 @@
     </div>
     <div class="folder-tabs" id="folder-tabs"></div>
     <div id="task-list"></div>
+  </section>
+
+  <!-- 日程 -->
+  <section id="view-schedule" class="view hidden">
+    <div class="view-head">
+      <div>
+        <h2><span class="hicon" data-icon="calendar"></span>我的日程</h2>
+        <div class="sub">今天有什么安排，一眼就看到</div>
+      </div>
+    </div>
+    <div class="sch-tool-row">
+      <button class="btn btn-outline" onclick="document.getElementById('ics-file').click()"><span data-icon="upload"></span>导入日历 (.ics)</button>
+      <button class="btn btn-outline" onclick="openIcsHelp()">iPhone 日历怎么导出？</button>
+      <input type="file" id="ics-file" accept=".ics,text/calendar" style="display:none" onchange="importICSFile(this)">
+    </div>
+    <div id="schedule-list"></div>
   </section>
 
   <!-- 倒计时 -->
@@ -605,6 +639,7 @@ var ICONS = {
   task: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l3 3 5-6.5"/></svg>',
   clock: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2.5"/></svg>',
   habit: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18M9 15.5l2 2 4-4"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><circle cx="12" cy="15.5" r="1.6" fill="currentColor" stroke="none"/></svg>',
   data: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M7 10l5 5 5-5M4 19h16"/></svg>',
   flame: '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2c.8 3.4 4.6 4.7 4.6 8.7a4.6 4.6 0 0 1-9.2 0c0-1.7.8-2.8 1.7-4.1.2 1.6.9 2.4 1.9 2.7-.8-2.6-.1-5.5 1-7.3z"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
@@ -687,6 +722,7 @@ function defaultData(){
     tasks: [],
     countdowns: [],
     habits: [],
+    events: [],
     tomb: {},
     initialized: true
   };
@@ -704,14 +740,15 @@ function snapItems(arr){
 function buildSnap(){
   return {
     tasks: snapItems(db.tasks), folders: snapItems(db.folders),
-    countdowns: snapItems(db.countdowns), habits: snapItems(db.habits)
+    countdowns: snapItems(db.countdowns), habits: snapItems(db.habits),
+    events: snapItems(db.events || [])
   };
 }
 function stampChanges(){
   if (!lastSnap || !db.tomb) db.tomb = db.tomb || {};
   if (!lastSnap) return;
   var now = Date.now();
-  var keys = ['tasks','folders','countdowns','habits'];
+  var keys = ['tasks','folders','countdowns','habits','events'];
   for (var k = 0; k < keys.length; k++){
     var key = keys[k];
     var prev = lastSnap[key] || {};
@@ -737,6 +774,7 @@ function load(){
       if (!db.tasks) db.tasks = [];
       if (!db.countdowns) db.countdowns = [];
       if (!db.habits) db.habits = [];
+      if (!db.events) db.events = [];
       if (!db.tomb) db.tomb = {};
     } else {
       db = defaultData();
@@ -841,7 +879,7 @@ function runConfirmOk(){
 /* ---------- Tab 切换 ---------- */
 function setTab(tab){
   currentTab = tab;
-  var views = ['tasks', 'countdown', 'habits', 'data'];
+  var views = ['tasks', 'schedule', 'countdown', 'habits', 'data'];
   for (var i = 0; i < views.length; i++){
     var v = document.getElementById('view-' + views[i]);
     if (v) v.classList.toggle('hidden', views[i] !== tab);
@@ -855,6 +893,7 @@ function setTab(tab){
 }
 function fabAction(){
   if (currentTab === 'tasks') openTaskForm();
+  else if (currentTab === 'schedule') openEventForm();
   else if (currentTab === 'countdown') openCountdownForm();
   else if (currentTab === 'habits') openHabitForm();
 }
@@ -884,6 +923,9 @@ function renderToday(){
   db.countdowns.forEach(function(c){
     var d = daysUntil(c.date);
     if (d <= 7) items.push({kind: 'cd', d: d, obj: c});
+  });
+  db.events.forEach(function(ev){
+    if (expandEvent(ev, todayStr(), todayStr()).length) items.push({kind: 'ev', d: 0, obj: ev});
   });
 
   items.sort(function(a, b){ return a.d - b.d; });
@@ -927,7 +969,7 @@ function renderToday(){
           '<div class="ti-meta">' + dueChip + prChip + folderChip + '</div></div>' +
           '<button class="done-btn" onclick="toggleTaskDone(\'' + t.id + '\')" title="标记完成">' + ICONS.check + '</button>' +
           '</div>';
-      } else {
+      } else if (it.kind === 'cd'){
         var c = it.obj;
         var d2 = it.d;
         var cdChip = '';
@@ -939,6 +981,18 @@ function renderToday(){
           '<div class="ti-meta">' + cdChip + '<span class="mini-chip chip-brown">倒计时</span>' +
           (c.link ? '<span class="mini-chip chip-blue">有链接</span>' : '') + '</div></div>' +
           '<button class="done-btn" style="border-color:var(--info);color:var(--info)" onclick="showCountdownDetail(\'' + c.id + '\')" title="查看详情">' + ICONS.extLink + '</button>' +
+          '</div>';
+      } else {
+        var e = it.obj;
+        var evChip = e.time
+          ? '<span class="mini-chip chip-orange">' + esc(e.time) + (e.endTime ? '-' + esc(e.endTime) : '') + '</span>'
+          : '<span class="mini-chip chip-gray">全天</span>';
+        html += '<div class="today-item">' +
+          '<div class="ti-main"><div class="ti-title"><span class="ti-ic">' + ICONS.calendar + '</span><span class="ti-txt">' + esc(e.title) + '</span></div>' +
+          '<div class="ti-meta">' + evChip + '<span class="mini-chip chip-brown">日程</span>' +
+          (e.repeat === 'weekly' ? '<span class="mini-chip chip-blue">每周</span>' : '') +
+          (e.location ? '<span class="mini-chip chip-gray">' + esc(e.location) + '</span>' : '') + '</div></div>' +
+          '<button class="done-btn" style="border-color:var(--info);color:var(--info)" onclick="showEventDetail(\'' + e.id + '\')" title="查看详情">' + ICONS.extLink + '</button>' +
           '</div>';
       }
     });
@@ -1547,6 +1601,269 @@ function deleteHabitConfirm(id){
   });
 }
 
+/* ---------- 日程 ---------- */
+function findEvent(id){
+  for (var i = 0; i < db.events.length; i++) if (db.events[i].id === id) return db.events[i];
+  return null;
+}
+function hashStr(s){
+  var h = 5381;
+  for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+/* 把一条日程在 fromD~toD 之间展开成具体日期（每周重复的自动算出每一场） */
+function expandEvent(ev, fromD, toD){
+  var res = [];
+  if (!ev || !ev.date) return res;
+  if (ev.repeat !== 'weekly'){
+    if (ev.date >= fromD && ev.date <= toD) res.push(ev.date);
+    return res;
+  }
+  var start = new Date(ev.date + 'T00:00:00');
+  var endD = (ev.until && ev.until < toD) ? ev.until : toD;
+  var end = new Date(endD + 'T00:00:00');
+  var from = new Date(fromD + 'T00:00:00');
+  if (start < from){
+    var weeks = Math.ceil((from - start) / (7 * 86400000));
+    start.setDate(start.getDate() + weeks * 7);
+  }
+  var guard = 0;
+  while (start <= end && guard < 300){
+    var ds = fmtLocal(start);
+    if (ds >= fromD) res.push(ds);
+    start.setDate(start.getDate() + 7);
+    guard++;
+  }
+  return res;
+}
+function dateLabel(ds){
+  var d = daysUntil(ds);
+  if (d === 0) return '今天';
+  if (d === 1) return '明天';
+  if (d === 2) return '后天';
+  var dt = new Date(ds + 'T00:00:00');
+  return '周' + WEEK_CN[dt.getDay()];
+}
+function renderSchedule(){
+  var el = document.getElementById('schedule-list');
+  var today = todayStr();
+  var far = dateOffset(365);
+  var occ = [];
+  db.events.forEach(function(ev){
+    expandEvent(ev, today, far).forEach(function(ds){ occ.push({date: ds, ev: ev}); });
+  });
+  occ.sort(function(a, b){
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return (a.ev.time || '99:99') < (b.ev.time || '99:99') ? -1 : 1;
+  });
+  var past = db.events.filter(function(ev){ return ev.repeat !== 'weekly' && ev.date < today; });
+  if (occ.length === 0 && past.length === 0){
+    el.innerHTML = '<div class="empty-today" style="padding:22px 0"><p>还没有日程，点右下角 + 加一条<br>也可以从 iPhone 日历导入（.ics 文件）</p></div>';
+    return;
+  }
+  var html = '';
+  var curDate = '';
+  var first = true;
+  occ.forEach(function(o){
+    if (o.date !== curDate){
+      curDate = o.date;
+      html += '<div class="sch-date' + (first ? ' sch-head-first' : '') + '">' + dateLabel(curDate) + ' · ' + curDate.slice(5) + '</div>';
+      first = false;
+    }
+    html += eventCardHTML(o.ev, false);
+  });
+  if (past.length){
+    past.sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+    html += '<div class="sch-date" style="color:var(--text-soft)">已过去</div>';
+    past.forEach(function(ev){ html += eventCardHTML(ev, true); });
+  }
+  el.innerHTML = html;
+}
+function eventCardHTML(ev, isPast){
+  var timeHtml = ev.time
+    ? '<div class="t">' + esc(ev.time) + '</div>' + (ev.endTime ? '<div class="al">至 ' + esc(ev.endTime) + '</div>' : '')
+    : '<div class="al" style="padding:8px 0">全天</div>';
+  var sub = [];
+  if (ev.repeat === 'weekly') sub.push('每周重复');
+  if (ev.location) sub.push(esc(ev.location));
+  if (ev.src === 'ics') sub.push('从日历导入');
+  return '<div class="ev-card' + (isPast ? ' sch-past' : '') + '" onclick="showEventDetail(\'' + ev.id + '\')">' +
+    '<div class="ev-time">' + timeHtml + '</div>' +
+    '<div class="ev-main"><div class="ev-title">' + esc(ev.title) + '</div>' +
+    '<div class="ev-sub">' + (sub.length ? sub.join(' · ') : '&nbsp;') + '</div></div>' +
+    '</div>';
+}
+function openEventForm(id){
+  var ev = id ? findEvent(id) : null;
+  var rp = ev ? (ev.repeat || 'none') : 'none';
+  var html = '<div class="form">' +
+    '<label class="label">日程名称</label>' +
+    '<input id="ef-title" class="input" maxlength="60" placeholder="比如：现代文学课 / 小组开会" value="' + (ev ? esc(ev.title) : '') + '">' +
+    '<label class="label">日期</label>' +
+    '<input id="ef-date" class="input" type="date" value="' + (ev ? ev.date : todayStr()) + '">' +
+    '<label class="label">开始时间（可选）</label>' +
+    '<input id="ef-time" class="input" type="time" value="' + (ev ? (ev.time || '') : '') + '">' +
+    '<label class="label">结束时间（可选）</label>' +
+    '<input id="ef-end" class="input" type="time" value="' + (ev ? (ev.endTime || '') : '') + '">' +
+    '<label class="label">地点（可选）</label>' +
+    '<input id="ef-loc" class="input" maxlength="60" placeholder="教学楼 / 线上会议…" value="' + (ev ? esc(ev.location || '') : '') + '">' +
+    '<label class="label">重复</label>' +
+    '<div class="seg" id="ef-repeat">' +
+    '<button type="button" class="seg-btn' + (rp === 'none' ? ' active' : '') + '" data-v="none" onclick="setSeg(this)">不重复</button>' +
+    '<button type="button" class="seg-btn' + (rp === 'weekly' ? ' active' : '') + '" data-v="weekly" onclick="setSeg(this)">每周重复</button>' +
+    '</div>' +
+    '<label class="label">备注（可选）</label>' +
+    '<textarea id="ef-note" maxlength="300" placeholder="要带什么、找谁……">' + (ev ? esc(ev.note || '') : '') + '</textarea>' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+    '<button class="btn btn-primary" onclick="saveEvent(\'' + (ev ? ev.id : '') + '\')">保存</button>' +
+    '</div></div>';
+  openModal(ev ? '编辑日程' : '新建日程', html);
+}
+function saveEvent(id){
+  var title = document.getElementById('ef-title').value.trim();
+  var date = document.getElementById('ef-date').value;
+  if (!title){ showToast('先写日程名称'); return; }
+  if (!date){ showToast('选一个日期'); return; }
+  var data = {
+    title: title, date: date,
+    time: document.getElementById('ef-time').value || '',
+    endTime: document.getElementById('ef-end').value || '',
+    location: document.getElementById('ef-loc').value.trim(),
+    note: document.getElementById('ef-note').value.trim(),
+    repeat: getSegVal('ef-repeat') || 'none'
+  };
+  if (id){
+    var ev = findEvent(id);
+    if (ev){
+      for (var k in data) ev[k] = data[k];
+      if (!ev.src) ev.src = 'manual';
+    }
+  } else {
+    data.id = uid('e'); data.src = 'manual'; data.createdAt = Date.now();
+    db.events.push(data);
+  }
+  save();
+  closeModal();
+  renderAll();
+  showToast('已保存');
+}
+function showEventDetail(id){
+  var ev = findEvent(id);
+  if (!ev) return;
+  var tmTxt = ev.time ? (ev.time + (ev.endTime ? ' ~ ' + ev.endTime : '')) : '全天';
+  var html = '<div class="detail-rows">' +
+    '<div class="d-row"><div class="d-val" style="font-size:17px;font-weight:750">' + esc(ev.title) + '</div>' +
+    '<div class="ti-meta" style="margin-top:8px">' +
+    (ev.repeat === 'weekly' ? '<span class="mini-chip chip-blue">每周重复</span>' : '') +
+    (ev.src === 'ics' ? '<span class="mini-chip chip-gray">从日历导入</span>' : '') +
+    '</div></div>' +
+    '<div class="d-row"><div class="d-label">时间</div><div class="d-val">' + esc(ev.date) + '（' + dateLabel(ev.date) + '） · ' + esc(tmTxt) + '</div></div>';
+  if (ev.location) html += '<div class="d-row"><div class="d-label">地点</div><div class="d-val">' + esc(ev.location) + '</div></div>';
+  if (ev.note) html += '<div class="d-row"><div class="d-label">备注</div><div class="d-val pre">' + esc(ev.note) + '</div></div>';
+  html += '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="openEventForm(\'' + ev.id + '\')">' + ICONS.pencil + '编辑</button>' +
+    '<button class="btn btn-danger" onclick="deleteEventConfirm(\'' + ev.id + '\')">' + ICONS.trash + '删除</button>' +
+    '</div></div>';
+  openModal('日程详情', html);
+}
+function deleteEventConfirm(id){
+  var ev = findEvent(id);
+  if (!ev) return;
+  var msg = '确定删除「' + ev.title + '」吗？' + (ev.repeat === 'weekly' ? '每周重复的日程会整组删掉。' : '');
+  confirmDialog('删除日程', msg, function(){
+    db.events = db.events.filter(function(x){ return x.id !== id; });
+    save();
+    renderAll();
+    showToast('已删除');
+  });
+}
+
+/* ---------- iPhone 日历导入（.ics） ---------- */
+function openIcsHelp(){
+  openModal('怎么拿到 .ics 文件？',
+    '<div class="detail-rows"><div class="d-row"><div class="d-val pre" style="font-size:13.5px;line-height:1.9">' +
+    '苹果日历 App 里没有「导出」按钮，.ics 文件一般从这几个地方来：\n\n' +
+    '① 学校教务系统 / 课程表 App，很多都有「导出日历」功能，导出的就是 .ics 文件；\n\n' +
+    '② 报名、讲座的确认邮件，附件里经常带 .ics；\n\n' +
+    '③ 有 Mac 电脑的话：日历 App → 左边选中日历 → 顶部「文件」→「导出」→ 导出 .ics。\n\n' +
+    '拿到文件后（微信传给自己或网盘下载都行），点「导入日历 (.ics)」选中它。\n\n' +
+    '重新导入会自动替换上一次导入的内容，不会越导越多；手动加的日程不受影响。' +
+    '</div></div>' +
+    '<div class="form-actions"><button class="btn btn-outline" onclick="closeModal()">知道了</button></div>');
+}
+function icsUnescape(s){
+  return String(s).replace(/\\n/gi, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+}
+function icsParseDT(val){
+  var m = String(val || '').match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?/);
+  if (!m) return null;
+  if (m[4] && m[7]){
+    var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
+    return {date: fmtLocal(dt), time: ('0' + dt.getHours()).slice(-2) + ':' + ('0' + dt.getMinutes()).slice(-2), allDay: false};
+  }
+  return {date: m[1] + '-' + m[2] + '-' + m[3], time: m[4] ? m[4] + ':' + m[5] : '', allDay: !m[4]};
+}
+function parseICS(text){
+  var out = [];
+  text = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n[ \t]/g, '');
+  var lines = text.split('\n');
+  var cur = null;
+  for (var i = 0; i < lines.length; i++){
+    var ln = lines[i].trim();
+    if (!ln) continue;
+    if (ln === 'BEGIN:VEVENT'){ cur = {}; continue; }
+    if (ln === 'END:VEVENT'){ if (cur && cur.SUMMARY) out.push(cur); cur = null; continue; }
+    if (!cur) continue;
+    var ci = ln.indexOf(':');
+    if (ci < 0) continue;
+    var nm = ln.slice(0, ci).split(';')[0].toUpperCase();
+    if (nm === 'DTSTART' || nm === 'DTEND' || nm === 'SUMMARY' || nm === 'LOCATION' || nm === 'UID' || nm === 'RRULE') cur[nm] = ln.slice(ci + 1);
+  }
+  return out;
+}
+function importICSFile(input){
+  var f = input.files && input.files[0];
+  if (!f) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var raw = parseICS(String(e.target.result));
+    var added = 0;
+    var now = Date.now();
+    db.events = db.events.filter(function(ev){ return ev.src !== 'ics'; });
+    raw.forEach(function(r){
+      var st = icsParseDT(r.DTSTART);
+      if (!st) return;
+      var en = icsParseDT(r.DTEND);
+      var repeat = 'none', until = '';
+      if (r.RRULE && /FREQ\s*=\s*WEEKLY/i.test(r.RRULE)){
+        repeat = 'weekly';
+        var um = r.RRULE.match(/UNTIL\s*=\s*(\d{8})/i);
+        if (um) until = um[1].slice(0, 4) + '-' + um[1].slice(4, 6) + '-' + um[1].slice(6, 8);
+      }
+      var id = 'e_' + hashStr(String(r.UID || '') + '|' + r.SUMMARY + '|' + st.date + '|' + st.time);
+      db.events = db.events.filter(function(ev){ return ev.id !== id; });
+      db.events.push({
+        id: id, title: icsUnescape(r.SUMMARY).slice(0, 60), date: st.date,
+        time: st.allDay ? '' : st.time,
+        endTime: (en && !en.allDay && en.date === st.date) ? en.time : '',
+        location: r.LOCATION ? icsUnescape(r.LOCATION).slice(0, 60) : '',
+        note: '', repeat: repeat, until: until, src: 'ics', createdAt: now
+      });
+      added++;
+    });
+    if (!added){
+      showToast('这份文件里没找到能看懂的日程');
+    } else {
+      save();
+      renderAll();
+      showToast('导入 ' + added + ' 条日程，已替换上次导入的内容');
+    }
+  };
+  reader.readAsText(f);
+  input.value = '';
+}
+
 /* ---------- 数据管理 ---------- */
 function renderData(){
   var doneCnt = db.tasks.filter(function(t){ return t.status === 'done'; }).length;
@@ -1556,6 +1873,7 @@ function renderData(){
     '<div class="stat-box"><div class="stat-num">' + db.tasks.length + '</div><div class="stat-label">任务总数</div></div>' +
     '<div class="stat-box"><div class="stat-num">' + doneCnt + '</div><div class="stat-label">已完成</div></div>' +
     '<div class="stat-box"><div class="stat-num">' + db.countdowns.length + '</div><div class="stat-label">倒计时</div></div>' +
+    '<div class="stat-box"><div class="stat-num">' + db.events.length + '</div><div class="stat-label">日程</div></div>' +
     '<div class="stat-box"><div class="stat-num">' + db.habits.length + '</div><div class="stat-label">打卡习惯</div></div>';
 
   var hasSample = db.tasks.some(function(t){ return t.sample; }) ||
@@ -1569,7 +1887,7 @@ function renderData(){
   }
 
   // 备份提醒
-  var total = db.tasks.length + db.countdowns.length + totalCheckins;
+  var total = db.tasks.length + db.countdowns.length + db.events.length + totalCheckins;
   var banner = document.getElementById('backup-banner');
   var ack = localStorage.getItem(BACKUP_ACK_KEY);
   if (total >= 30 && ack !== todayStr()){
@@ -1621,6 +1939,8 @@ function importJSONFile(input){
         tasks: d.tasks || [],
         countdowns: d.countdowns || [],
         habits: d.habits || [],
+        events: d.events || [],
+        tomb: d.tomb || {},
         initialized: true
       };
       folderFilter = 'all';
@@ -1659,6 +1979,7 @@ function renderAll(){
   renderHeader();
   renderToday();
   renderTasks();
+  renderSchedule();
   renderCountdowns();
   renderHabits();
   renderData();
@@ -1743,7 +2064,7 @@ function payloadFromDb(){
 }
 /* 条目级合并：同一条取较新版本；删除按墓碑时间传播；标题取较新 */
 function mergeDb(cloud){
-  var keys = ['tasks','folders','countdowns','habits'];
+  var keys = ['tasks','folders','countdowns','habits','events'];
   var out = { tomb: {}, initialized: true };
   var lt = db.tomb || {}, ct = (cloud && cloud.tomb) || {};
   for (var id in lt) out.tomb[id] = lt[id];
