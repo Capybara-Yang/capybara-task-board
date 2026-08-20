@@ -61,6 +61,20 @@
   }
   .title-edit:active{background:rgba(185,148,111,.32);}
   .title-edit svg{display:block;}
+  .sync-btn{
+    flex-shrink:0;width:30px;height:30px;border-radius:9px;border:none;cursor:pointer;position:relative;
+    background:rgba(185,148,111,.14);color:#8A6F52;display:flex;align-items:center;justify-content:center;
+    transition:background .15s;
+  }
+  .sync-btn:active{background:rgba(185,148,111,.32);}
+  .sync-btn svg{display:block;}
+  .sync-dot{
+    position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
+    border:2px solid #FDF8F2;background:#C9BCA8;
+  }
+  .sync-dot.on{background:#7FA96B;}
+  .sync-dot.busy{background:#F0A04B;}
+  .sync-note{font-size:12.5px;color:var(--text-soft);line-height:1.65;margin:8px 0 0;}
   .title-wrap p{font-size:12.5px;color:var(--text-soft);margin-top:1px;}
   .badge-local{
     flex-shrink:0;font-size:11px;color:var(--primary-deep);background:var(--accent-soft);
@@ -425,6 +439,12 @@
             <path d="M13.5 6.5l4 4" stroke="#8A6F52" stroke-width="2" stroke-linejoin="round"/>
           </svg>
         </button>
+        <button class="sync-btn" onclick="openSyncModal()" title="云同步" aria-label="云同步">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-1 7.5H7z" stroke="#8A6F52" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="sync-dot" id="sync-dot"></span>
+        </button>
       </div>
       <p id="header-date"></p>
     </div>
@@ -665,8 +685,46 @@ function defaultData(){
     tasks: [],
     countdowns: [],
     habits: [],
+    tomb: {},
     initialized: true
   };
+}
+var lastSnap = null; // 上次保存时的快照，用于识别哪些条目被改过/删过
+function snapItems(arr){
+  var m = {};
+  for (var i = 0; i < arr.length; i++){
+    var c = JSON.parse(JSON.stringify(arr[i]));
+    delete c.u;
+    m[arr[i].id] = JSON.stringify(c);
+  }
+  return m;
+}
+function buildSnap(){
+  return {
+    tasks: snapItems(db.tasks), folders: snapItems(db.folders),
+    countdowns: snapItems(db.countdowns), habits: snapItems(db.habits)
+  };
+}
+function stampChanges(){
+  if (!lastSnap || !db.tomb) db.tomb = db.tomb || {};
+  if (!lastSnap) return;
+  var now = Date.now();
+  var keys = ['tasks','folders','countdowns','habits'];
+  for (var k = 0; k < keys.length; k++){
+    var key = keys[k];
+    var prev = lastSnap[key] || {};
+    var seen = {};
+    for (var i = 0; i < db[key].length; i++){
+      var it = db[key][i];
+      seen[it.id] = true;
+      var c = JSON.parse(JSON.stringify(it));
+      delete c.u;
+      if (!prev[it.id] || prev[it.id] !== JSON.stringify(c)) it.u = now;
+    }
+    for (var id in prev){
+      if (!seen[id]) db.tomb[id] = now;
+    }
+  }
 }
 function load(){
   try{
@@ -677,6 +735,7 @@ function load(){
       if (!db.tasks) db.tasks = [];
       if (!db.countdowns) db.countdowns = [];
       if (!db.habits) db.habits = [];
+      if (!db.tomb) db.tomb = {};
     } else {
       db = defaultData();
       save();
@@ -684,13 +743,16 @@ function load(){
   }catch(e){
     db = defaultData();
   }
+  lastSnap = buildSnap();
 }
 function save(){
+  stampChanges();
   try{
     localStorage.setItem(DB_KEY, JSON.stringify(db));
   }catch(e){
     showToast('保存失败：存储空间可能满了（图片太多）');
   }
+  lastSnap = buildSnap();
 }
 
 /* ---------- 示例数据 ---------- */
@@ -1604,7 +1666,7 @@ function renderAll(){
 function applyTitle(){
   var t = '';
   try{ t = localStorage.getItem(TITLE_KEY) || ''; }catch(e){}
-  var name = t.trim() || '卡皮巴拉任务台';
+  var name = (db && db.title ? db.title : '').trim() || t.trim() || '卡皮巴拉任务台';
   document.getElementById('app-title').textContent = name;
   document.title = name;
 }
@@ -1628,9 +1690,198 @@ function saveTitle(){
   var name = document.getElementById('wt-name').value.trim();
   if (!name){ showToast('写个名字吧'); return; }
   try{ localStorage.setItem(TITLE_KEY, name); }catch(e){}
+  db.title = name;
+  db.titleTs = Date.now();
+  save();
   applyTitle();
   closeModal();
   showToast('改名完成～');
+}
+
+/* ---------- GitHub 云同步 ---------- */
+var SYNC_KEY = 'wb_capybara_sync';
+var SYNC_FILE = 'capybara-data.json';
+var syncBusy = false;
+function getSyncCfg(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)) || null; }catch(e){ return null; }
+}
+function setSyncCfg(cfg){
+  try{ localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); }catch(e){}
+  renderSyncBadge();
+}
+function renderSyncBadge(){
+  var dot = document.getElementById('sync-dot');
+  var cfg = getSyncCfg();
+  if (dot) dot.className = 'sync-dot' + (cfg ? ' on' : '');
+  var badge = document.querySelector('.badge-local');
+  if (badge) badge.textContent = cfg ? '云端同步 · 多设备一致' : '本地保存 · 数据在身边';
+}
+function setDot(cls){
+  var dot = document.getElementById('sync-dot');
+  if (dot) dot.className = 'sync-dot' + (cls ? ' ' + cls : '');
+}
+function gistApi(method, path, body, cb){
+  var cfg = getSyncCfg() || {};
+  var token = cfg.token || window.__syncToken || '';
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, 'https://api.github.com' + path, true);
+  xhr.setRequestHeader('Authorization', 'token ' + token);
+  xhr.setRequestHeader('Accept', 'application/vnd.github+json');
+  xhr.onreadystatechange = function(){
+    if (xhr.readyState !== 4) return;
+    var data = null;
+    try{ data = JSON.parse(xhr.responseText); }catch(e){}
+    if (xhr.status >= 200 && xhr.status < 300) cb(null, data);
+    else cb({status: xhr.status, msg: data && data.message ? data.message : ('HTTP ' + xhr.status)}, data);
+  };
+  xhr.send(body ? JSON.stringify(body) : null);
+}
+function payloadFromDb(){
+  return { v: 1, savedAt: Date.now(), data: db };
+}
+/* 条目级合并：同一条取较新版本；删除按墓碑时间传播；标题取较新 */
+function mergeDb(cloud){
+  var keys = ['tasks','folders','countdowns','habits'];
+  var out = { tomb: {}, initialized: true };
+  var lt = db.tomb || {}, ct = (cloud && cloud.tomb) || {};
+  for (var id in lt) out.tomb[id] = lt[id];
+  for (var id2 in ct) out.tomb[id2] = Math.max(out.tomb[id2] || 0, ct[id2]);
+  var cutoff = Date.now() - 60 * 86400000;
+  for (var id3 in out.tomb){ if (out.tomb[id3] < cutoff) delete out.tomb[id3]; }
+  keys.forEach(function(k){
+    var map = {};
+    (db[k] || []).forEach(function(x){ map[x.id] = x; });
+    ((cloud && cloud[k]) || []).forEach(function(x){
+      if (!map[x.id] || (x.u || 0) > (map[x.id].u || 0)) map[x.id] = x;
+    });
+    out[k] = [];
+    for (var mid in map){
+      if ((out.tomb[mid] || 0) > (map[mid].u || 0)) continue;
+      out[k].push(map[mid]);
+    }
+  });
+  out.title = (cloud && (cloud.titleTs || 0) > (db.titleTs || 0) && cloud.title) ? cloud.title : db.title;
+  out.titleTs = Math.max((cloud && cloud.titleTs) || 0, db.titleTs || 0);
+  return out;
+}
+function syncNow(silent, onDone){
+  var cfg = getSyncCfg();
+  if (!cfg || !cfg.gistId){ if (!silent) openSyncModal(); return; }
+  if (syncBusy){ if (!silent) showToast('正在同步中，稍等一下…'); return; }
+  syncBusy = true;
+  setDot('busy');
+  gistApi('GET', '/gists/' + cfg.gistId, null, function(err, gist){
+    if (err){
+      syncBusy = false; setDot('on');
+      showToast('同步失败：' + (err.status === 401 ? '钥匙失效了，请重新设置' : (err.status === 404 ? '云端空间不存在，请重新连接' : '网络出问题了，稍后再试')));
+      if (onDone) onDone(false);
+      return;
+    }
+    var file = gist && gist.files ? gist.files[SYNC_FILE] : null;
+    var cloudData = null;
+    if (file && file.content){
+      try{ cloudData = JSON.parse(file.content).data; }catch(e){}
+    }
+    if (cloudData){
+      db = mergeDb(cloudData);
+      save();
+      renderAll();
+      applyTitle();
+    }
+    var payload = JSON.stringify(payloadFromDb());
+    if (payload.length > 950000){
+      syncBusy = false; setDot('on');
+      showToast('图片太多，云端装不下啦，先清理一些图片附件');
+      if (onDone) onDone(false);
+      return;
+    }
+    var files = {};
+    files[SYNC_FILE] = { content: payload };
+    gistApi('PATCH', '/gists/' + cfg.gistId, { files: files }, function(err2){
+      syncBusy = false; setDot('on');
+      if (err2){ showToast('同步失败：' + err2.msg); if (onDone) onDone(false); return; }
+      cfg.lastSync = Date.now();
+      setSyncCfg(cfg);
+      if (!silent) showToast('同步完成，两台设备数据一致啦～');
+      if (onDone) onDone(true);
+    });
+  });
+}
+function connectCloud(){
+  var el = document.getElementById('sync-token');
+  var token = el ? el.value.trim() : '';
+  if (!token){ showToast('先把钥匙粘贴进来～'); return; }
+  showToast('正在连接云端…');
+  window.__syncToken = token;
+  /* 先找找是否已有同步空间（第二台设备自动复用同一份云端数据） */
+  gistApi('GET', '/gists?per_page=100', null, function(err, gists){
+    if (err){
+      window.__syncToken = null;
+      showToast('连接失败：' + (err.status === 401 ? '钥匙无效，检查一下是否复制全了' : err.msg));
+      return;
+    }
+    var found = null;
+    for (var i = 0; i < (gists || []).length; i++){
+      if (gists[i].files && gists[i].files[SYNC_FILE]){ found = gists[i]; break; }
+    }
+    if (found){
+      setSyncCfg({ token: token, gistId: found.id, lastSync: 0 });
+      window.__syncToken = null;
+      closeModal();
+      showToast('找到你之前的云端数据啦，正在同步');
+      syncNow(false);
+    } else {
+      var files = {};
+      files[SYNC_FILE] = { content: JSON.stringify(payloadFromDb()) };
+      gistApi('POST', '/gists', { description: 'capybara-task-board-sync', public: false, files: files }, function(err2, g){
+        window.__syncToken = null;
+        if (err2 || !g || !g.id){ showToast('创建云端空间失败：' + (err2 ? err2.msg : '未知错误')); return; }
+        setSyncCfg({ token: token, gistId: g.id, lastSync: Date.now() });
+        closeModal();
+        showToast('云端空间建好啦！以后打开页面自动同步');
+      });
+    }
+  });
+}
+function disconnectSync(){
+  confirmDialog('断开云同步', '只清除这台设备上的同步设置，云端数据会保留。断开后这台设备回到纯本地模式。确定吗？', function(){
+    try{ localStorage.removeItem(SYNC_KEY); }catch(e){}
+    renderSyncBadge();
+    showToast('已断开云同步');
+  });
+}
+function openSyncModal(){
+  var cfg = getSyncCfg();
+  if (cfg && cfg.gistId){
+    var ts = '还没同步过';
+    if (cfg.lastSync){
+      var t = new Date(cfg.lastSync);
+      ts = t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2) +
+        ' ' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+    }
+    openModal('云同步',
+      '<p class="sync-note">已连接云端。每次打开页面会自动拉取最新数据；在这台设备改完内容，记得点一下「立即同步」推上去，另一台设备打开时就能看到。</p>' +
+      '<p class="sync-note">上次同步：<b>' + ts + '</b></p>' +
+      '<div class="btn-row" style="margin-top:12px;">' +
+      '<button class="btn btn-primary" onclick="closeModal();syncNow(false)">立即同步</button>' +
+      '<button class="btn btn-outline" onclick="disconnectSync()">断开同步</button>' +
+      '</div>' +
+      '<p class="sync-note" style="margin-top:14px;">📱 在其他设备开启：那台设备打开本页面 → 点右上角云朵 → 粘贴<b>同一把钥匙</b> → 连接，会自动找到你已有的云端数据。</p>');
+  } else {
+    openModal('开启云同步',
+      '<p class="sync-note">数据会同步到你的 GitHub 私密空间，手机、iPad 打开看到的都是同一份任务数据。每条改动按时间智能合并，不会互相覆盖。</p>' +
+      '<label class="label">GitHub 钥匙（Token）</label>' +
+      '<input id="sync-token" class="input" placeholder="ghp_ 开头的那串字母" autocomplete="off">' +
+      '<div class="form-actions">' +
+      '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+      '<button class="btn btn-primary" onclick="connectCloud()">连接云端</button>' +
+      '</div>' +
+      '<p class="sync-note" style="margin-top:14px;">🔑 钥匙获取：github.com → 头像 → Settings → Developer settings → Personal access tokens → 勾选 <b>gist</b> 权限生成即可。</p>');
+    setTimeout(function(){
+      var el = document.getElementById('sync-token');
+      if (el) el.focus();
+    }, 50);
+  }
 }
 
 /* ---------- 启动 ---------- */
@@ -1647,6 +1898,9 @@ injectIcons();
 applyTitle();
 renderAll();
 setTab('tasks');
+renderSyncBadge();
+var __cfg = getSyncCfg();
+if (__cfg && __cfg.gistId) setTimeout(function(){ syncNow(true); }, 600);
 </script>
 </body>
 </html>
