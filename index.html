@@ -2023,8 +2023,12 @@ function saveTitle(){
 
 /* ---------- GitHub 云同步 ---------- */
 var SYNC_KEY = 'wb_capybara_sync';
-var SYNC_FILE = 'capybara-data.json';
 var syncBusy = false;
+function getSyncFile(){
+  var cfg = getSyncCfg();
+  var ws = ((cfg && cfg.workspace) || window.__syncWorkspace || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  return ws ? 'capybara-data-' + ws + '.json' : 'capybara-data.json';
+}
 function getSyncCfg(){
   try{ return JSON.parse(localStorage.getItem(SYNC_KEY)) || null; }catch(e){ return null; }
 }
@@ -2100,7 +2104,7 @@ function syncNow(silent, onDone){
       if (onDone) onDone(false);
       return;
     }
-    var file = gist && gist.files ? gist.files[SYNC_FILE] : null;
+    var file = gist && gist.files ? gist.files[getSyncFile()] : null;
     var cloudData = null;
     if (file && file.content){
       try{ cloudData = JSON.parse(file.content).data; }catch(e){}
@@ -2119,7 +2123,7 @@ function syncNow(silent, onDone){
       return;
     }
     var files = {};
-    files[SYNC_FILE] = { content: payload };
+    files[getSyncFile()] = { content: payload };
     gistApi('PATCH', '/gists/' + cfg.gistId, { files: files }, function(err2){
       syncBusy = false; setDot('on');
       if (err2){ showToast('同步失败：' + err2.msg); if (onDone) onDone(false); return; }
@@ -2134,32 +2138,35 @@ function connectCloud(){
   var el = document.getElementById('sync-token');
   var token = el ? el.value.trim() : '';
   if (!token){ showToast('先把钥匙粘贴进来～'); return; }
-  showToast('正在连接云端…');
+  var wsEl = document.getElementById('sync-workspace');
+  var workspace = wsEl ? wsEl.value.trim().replace(/[^a-zA-Z0-9_-]/g, '') : '';
   window.__syncToken = token;
-  /* 先找找是否已有同步空间（第二台设备自动复用同一份云端数据） */
+  window.__syncWorkspace = workspace;
+  var syncFile = getSyncFile();
+  showToast('正在连接云端…');
   gistApi('GET', '/gists?per_page=100', null, function(err, gists){
     if (err){
-      window.__syncToken = null;
+      window.__syncToken = null; window.__syncWorkspace = null;
       showToast('连接失败：' + (err.status === 401 ? '钥匙无效，检查一下是否复制全了' : err.msg));
       return;
     }
     var found = null;
     for (var i = 0; i < (gists || []).length; i++){
-      if (gists[i].files && gists[i].files[SYNC_FILE]){ found = gists[i]; break; }
+      if (gists[i].files && gists[i].files[syncFile]){ found = gists[i]; break; }
     }
     if (found){
-      setSyncCfg({ token: token, gistId: found.id, lastSync: 0 });
-      window.__syncToken = null;
+      setSyncCfg({ token: token, gistId: found.id, workspace: workspace, lastSync: 0 });
+      window.__syncToken = null; window.__syncWorkspace = null;
       closeModal();
       showToast('找到你之前的云端数据啦，正在同步');
       syncNow(false);
     } else {
       var files = {};
-      files[SYNC_FILE] = { content: JSON.stringify(payloadFromDb()) };
+      files[syncFile] = { content: JSON.stringify(payloadFromDb()) };
       gistApi('POST', '/gists', { description: 'capybara-task-board-sync', public: false, files: files }, function(err2, g){
-        window.__syncToken = null;
+        window.__syncToken = null; window.__syncWorkspace = null;
         if (err2 || !g || !g.id){ showToast('创建云端空间失败：' + (err2 ? err2.msg : '未知错误')); return; }
-        setSyncCfg({ token: token, gistId: g.id, lastSync: Date.now() });
+        setSyncCfg({ token: token, gistId: g.id, workspace: workspace, lastSync: Date.now() });
         closeModal();
         showToast('云端空间建好啦！以后打开页面自动同步');
       });
@@ -2182,19 +2189,24 @@ function openSyncModal(){
       ts = t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2) +
         ' ' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
     }
+    var wsInfo = cfg.workspace ? '<p class="sync-note">工作区：<b>' + cfg.workspace + '</b>（与其他人数据隔离中）</p>' : '';
     openModal('云同步',
       '<p class="sync-note">已连接云端。每次打开页面会自动拉取最新数据；在这台设备改完内容，记得点一下「立即同步」推上去，另一台设备打开时就能看到。</p>' +
       '<p class="sync-note">上次同步：<b>' + ts + '</b></p>' +
+      wsInfo +
       '<div class="btn-row" style="margin-top:12px;">' +
       '<button class="btn btn-primary" onclick="closeModal();syncNow(false)">立即同步</button>' +
       '<button class="btn btn-outline" onclick="disconnectSync()">断开同步</button>' +
       '</div>' +
-      '<p class="sync-note" style="margin-top:14px;">📱 在其他设备开启：那台设备打开本页面 → 点右上角云朵 → 粘贴<b>同一把钥匙</b> → 连接，会自动找到你已有的云端数据。</p>');
+      '<p class="sync-note" style="margin-top:14px;">📱 在其他设备开启：那台设备打开本页面 → 点右上角云朵 → 粘贴<b>同一把钥匙</b>' + (cfg.workspace ? '，填<b>同一个工作区名字：' + cfg.workspace + '</b>' : '') + ' → 连接，会自动找到你已有的云端数据。</p>');
   } else {
     openModal('开启云同步',
       '<p class="sync-note">数据会同步到你的 GitHub 私密空间，手机、iPad 打开看到的都是同一份任务数据。每条改动按时间智能合并，不会互相覆盖。</p>' +
       '<label class="label">GitHub 钥匙（Token）</label>' +
       '<input id="sync-token" class="input" placeholder="ghp_ 开头的那串字母" autocomplete="off">' +
+      '<label class="label">工作区名字（选填）</label>' +
+      '<input id="sync-workspace" class="input" placeholder="用别人的 GitHub 时填一个区分开" autocomplete="off">' +
+      '<p class="sync-note" style="font-size:12px;margin-top:-4px;">自己用的不填；多人共用同一把钥匙时，各填各的名字，数据就互不干扰。</p>' +
       '<div class="form-actions">' +
       '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
       '<button class="btn btn-primary" onclick="connectCloud()">连接云端</button>' +
