@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#FAF3E9">
+<title>卡皮巴拉任务台 · Capybara Task Board</title>
+<style>
+  :root{
+    --bg:#FAF3E9;
+    --card:#FFFFFF;
+    --card-warm:#FDF8F0;
+    --primary:#A0896B;
+    --primary-deep:#8A6F52;
+    --accent:#F0A04B;
+    --accent-deep:#E08A2E;
+    --accent-soft:#FBE8CE;
+    --text:#4A3B2C;
+    --text-soft:#9A8A75;
+    --danger:#D9534F;
+    --danger-soft:#FBE9E7;
+    --success:#7FA96B;
+    --success-soft:#EAF3E4;
+    --info-soft:#E3ECF5;
+    --info:#5F7F9E;
+    --border:#F0E4D2;
+    --radius:18px;
+    --radius-sm:12px;
+    --shadow:0 2px 12px rgba(138,111,82,.08);
+    --nav-h:62px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,sans-serif;
+    background:var(--bg);
+    background-image:radial-gradient(circle at 12% 8%, rgba(240,160,75,.06) 0 180px, transparent 180px),
+                     radial-gradient(circle at 90% 30%, rgba(184,152,127,.07) 0 220px, transparent 220px);
+    color:var(--text);
+    min-height:100vh;
+    line-height:1.55;
+  }
+  button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit;}
+  input,select,textarea{font-family:inherit;font-size:16px;color:var(--text);}
+  svg{display:block;}
+
+  /* ---------- 头部 ---------- */
+  .app-header{
+    max-width:960px;margin:0 auto;padding:18px 16px 10px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .header-left{display:flex;align-items:center;gap:12px;min-width:0;}
+  .logo{flex-shrink:0;}
+  .title-wrap h1{font-size:21px;font-weight:800;letter-spacing:.5px;}
+  .title-row{display:flex;align-items:center;gap:6px;min-width:0;}
+  .title-row h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .title-edit{
+    flex-shrink:0;width:30px;height:30px;border-radius:9px;border:none;cursor:pointer;
+    background:rgba(185,148,111,.14);color:#8A6F52;display:flex;align-items:center;justify-content:center;
+    transition:background .15s;
+  }
+  .title-edit:active{background:rgba(185,148,111,.32);}
+  .title-edit svg{display:block;}
+  .title-wrap p{font-size:12.5px;color:var(--text-soft);margin-top:1px;}
+  .badge-local{
+    flex-shrink:0;font-size:11px;color:var(--primary-deep);background:var(--accent-soft);
+    border:1px solid rgba(240,160,75,.35);padding:4px 10px;border-radius:999px;white-space:nowrap;
+  }
+
+  /* ---------- 备份提醒横幅 ---------- */
+  .backup-banner{
+    max-width:960px;margin:4px auto 0;padding:0 16px;
+  }
+  .backup-banner .inner{
+    background:var(--accent-soft);border:1px dashed rgba(224,138,46,.5);
+    border-radius:var(--radius-sm);padding:10px 14px;font-size:13.5px;color:#8A5A1E;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .backup-banner .inner button{
+    background:var(--accent-deep);color:#fff;font-size:12.5px;padding:6px 14px;
+    border-radius:999px;font-weight:600;
+  }
+
+  /* ---------- 今日要处理 ---------- */
+  .today-section{
+    max-width:960px;margin:10px auto 0;padding:0 16px;
+  }
+  .today-card{
+    background:linear-gradient(135deg,#FFFCF6 0%,#FBF1E1 100%);
+    border:1.5px solid var(--border);border-radius:var(--radius);
+    padding:16px;box-shadow:var(--shadow);
+  }
+  .section-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .section-head h2{font-size:16.5px;font-weight:800;display:flex;align-items:center;gap:7px;}
+  .section-head .hicon{color:var(--accent-deep);}
+  .section-count{
+    font-size:11.5px;background:var(--danger-soft);color:var(--danger);
+    padding:2px 9px;border-radius:999px;font-weight:700;
+  }
+  .section-count.ok{background:var(--success-soft);color:var(--success);}
+  .today-item{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);
+    background:#fff;margin-bottom:8px;border:1px solid var(--border);
+  }
+  .today-item:last-child{margin-bottom:0;}
+  .today-item.overdue{border-color:rgba(217,83,79,.4);background:#FFF7F6;}
+  .ti-main{flex:1;min-width:0;}
+  .ti-title{font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;}
+  .ti-title .ti-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ti-title .ti-ic{flex-shrink:0;color:var(--primary);display:flex;}
+  .today-item.overdue .ti-title{color:var(--danger);}
+  .ti-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center;}
+  .mini-chip{
+    font-size:10.5px;padding:2px 8px;border-radius:999px;font-weight:600;white-space:nowrap;
+  }
+  .chip-red{background:var(--danger-soft);color:var(--danger);}
+  .chip-orange{background:var(--accent-soft);color:var(--accent-deep);}
+  .chip-brown{background:#F3EADC;color:var(--primary-deep);}
+  .chip-green{background:var(--success-soft);color:var(--success);}
+  .chip-blue{background:var(--info-soft);color:var(--info);}
+  .chip-gray{background:#F1EEE8;color:#A39C90;}
+  .done-btn{
+    width:38px;height:38px;border-radius:50%;border:2px solid var(--border);
+    display:flex;align-items:center;justify-content:center;color:#C9BBA5;flex-shrink:0;transition:all .15s;
+  }
+  .done-btn:hover{border-color:var(--success);color:var(--success);}
+  .today-habits{margin-top:12px;display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  .today-habits-label{font-size:12px;color:var(--text-soft);align-self:center;flex-shrink:0;font-weight:600;}
+  .th-chip{
+    flex-shrink:0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;
+    background:#fff;border:1.5px solid var(--border);border-radius:999px;font-size:13px;font-weight:600;
+    color:var(--primary-deep);transition:all .15s;
+  }
+  .th-chip.on{background:var(--success-soft);border-color:var(--success);color:var(--success);}
+  .empty-today{display:flex;flex-direction:column;align-items:center;padding:8px 0 4px;}
+  .empty-today p{font-size:13.5px;color:var(--text-soft);margin-top:6px;}
+
+  /* ---------- 导航 ---------- */
+  #main-nav{
+    max-width:960px;margin:16px auto 0;padding:0 16px;
+    display:flex;gap:8px;
+  }
+  .nav-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:10px 4px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;
+    color:var(--text-soft);background:rgba(255,255,255,.6);border:1.5px solid transparent;transition:all .15s;
+  }
+  .nav-btn.active{background:#fff;color:var(--primary-deep);border-color:var(--border);box-shadow:var(--shadow);}
+  .nav-btn.active svg{color:var(--accent-deep);}
+
+  /* ---------- 主体 ---------- */
+  main{max-width:960px;margin:0 auto;padding:14px 16px calc(var(--nav-h) + 96px);}
+  .view.hidden{display:none;}
+  .data-card.hidden{display:none;}
+
+  .view-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .view-head h2{font-size:17px;font-weight:800;display:flex;align-items:center;gap:7px;}
+  .view-head .hicon{color:var(--accent-deep);}
+  .view-head .sub{font-size:12px;color:var(--text-soft);margin-top:2px;font-weight:400;}
+
+  /* ---------- 文件夹标签 ---------- */
+  .folder-tabs{
+    display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;
+    scrollbar-width:none;
+  }
+  .folder-tabs::-webkit-scrollbar{display:none;}
+  .f-tab{
+    flex-shrink:0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;
+    border-radius:999px;background:#fff;border:1.5px solid var(--border);
+    font-size:13.5px;font-weight:600;color:var(--primary-deep);transition:all .15s;
+  }
+  .f-tab.active{background:var(--primary-deep);color:#fff;border-color:var(--primary-deep);}
+  .f-tab .cnt{font-size:11px;opacity:.75;}
+  .f-tab.manage{border-style:dashed;color:var(--text-soft);}
+
+  /* ---------- 任务卡片 ---------- */
+  .task-card{
+    display:flex;align-items:flex-start;gap:12px;background:var(--card);
+    border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 14px;
+    margin-bottom:10px;box-shadow:var(--shadow);transition:all .15s;cursor:pointer;
+  }
+  .task-card:hover{border-color:var(--primary);}
+  .task-card.done{opacity:.55;background:var(--card-warm);}
+  .task-card.done .t-title{text-decoration:line-through;color:var(--text-soft);}
+  .task-card .t-check{
+    width:40px;height:40px;border-radius:50%;border:2px solid var(--border);
+    display:flex;align-items:center;justify-content:center;color:#C9BBA5;flex-shrink:0;margin-top:2px;transition:all .15s;
+  }
+  .task-card .t-check:hover{border-color:var(--success);color:var(--success);}
+  .task-card.done .t-check{background:var(--success);border-color:var(--success);color:#fff;}
+  .t-main{flex:1;min-width:0;}
+  .t-title{font-size:15px;font-weight:650;word-break:break-word;}
+  .t-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;}
+  .t-attach{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--text-soft);}
+
+  /* ---------- 倒计时卡片 ---------- */
+  .cd-card{
+    display:flex;align-items:center;gap:14px;background:var(--card);
+    border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;
+    margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer;transition:all .15s;
+  }
+  .cd-card:hover{border-color:var(--primary);}
+  .cd-card.urgent{border-color:rgba(217,83,79,.45);background:#FFF9F8;}
+  .cd-card.soon{border-color:rgba(240,160,75,.5);}
+  .cd-days{flex-shrink:0;text-align:center;min-width:74px;}
+  .cd-num{font-size:30px;font-weight:800;line-height:1;color:var(--primary-deep);}
+  .cd-card.urgent .cd-num{color:var(--danger);}
+  .cd-card.soon .cd-num{color:var(--accent-deep);}
+  .cd-unit{font-size:11px;color:var(--text-soft);margin-top:3px;}
+  .cd-main{flex:1;min-width:0;}
+  .cd-title{font-size:15px;font-weight:650;word-break:break-word;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .cd-date{font-size:12.5px;color:var(--text-soft);margin-top:3px;}
+  .cd-haslink{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--info);}
+
+  /* ---------- 习惯卡片 ---------- */
+  .habit-card{
+    background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
+    padding:16px;margin-bottom:12px;box-shadow:var(--shadow);
+  }
+  .habit-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .habit-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+  .h-name{flex:1;font-size:15.5px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .h-streak{
+    display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;
+    color:var(--accent-deep);background:var(--accent-soft);padding:4px 10px;border-radius:999px;flex-shrink:0;
+  }
+  .icon-btn{
+    width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    color:var(--text-soft);flex-shrink:0;transition:all .15s;
+  }
+  .icon-btn:hover{background:var(--danger-soft);color:var(--danger);}
+  .heatmap-wrap{overflow-x:auto;padding:4px 0 8px;scrollbar-width:none;}
+  .heatmap-wrap::-webkit-scrollbar{display:none;}
+  .heatmap{min-width:270px;}
+  .habit-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .h-total{font-size:12px;color:var(--text-soft);}
+  .check-btn{
+    display:flex;align-items:center;gap:8px;min-height:46px;padding:0 22px;border-radius:999px;
+    font-size:14.5px;font-weight:700;background:var(--success-soft);color:var(--success);
+    border:2px solid rgba(127,169,107,.4);transition:all .15s;
+  }
+  .check-btn.on{background:var(--success);color:#fff;border-color:var(--success);}
+  .hm-tip{font-size:11px;color:#C4B79F;margin-top:8px;}
+
+  /* ---------- 数据管理 ---------- */
+  .data-card{
+    background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
+    padding:16px;margin-bottom:12px;box-shadow:var(--shadow);
+  }
+  .data-card h3{font-size:14.5px;font-weight:750;margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .stat-box{background:var(--card-warm);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;}
+  .stat-num{font-size:24px;font-weight:800;color:var(--primary-deep);}
+  .stat-label{font-size:11px;color:var(--text-soft);margin-top:2px;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:46px;
+    padding:0 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:650;transition:all .15s;
+  }
+  .btn-primary{background:var(--primary-deep);color:#fff;}
+  .btn-primary:hover{background:#755C42;}
+  .btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--primary-deep);}
+  .btn-outline:hover{border-color:var(--primary);}
+  .btn-danger{background:#fff;border:1.5px solid rgba(217,83,79,.4);color:var(--danger);}
+  .btn-danger:hover{background:var(--danger-soft);}
+  .btn-ghost{background:var(--accent-soft);color:var(--accent-deep);}
+  .data-note{font-size:12.5px;color:var(--text-soft);line-height:1.7;}
+
+  /* ---------- 悬浮按钮 ---------- */
+  #fab{
+    position:fixed;right:18px;bottom:calc(var(--nav-h) + 20px + env(safe-area-inset-bottom));
+    width:58px;height:58px;border-radius:50%;background:var(--accent-deep);color:#fff;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(224,138,46,.4);
+    transition:transform .15s;z-index:50;
+  }
+  #fab:hover{transform:scale(1.06);}
+  #fab.hidden{display:none;}
+
+  /* ---------- 弹窗 ---------- */
+  .modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;}
+  .modal.hidden{display:none;}
+  .modal-mask{position:absolute;inset:0;background:rgba(74,59,44,.45);}
+  .modal-card{
+    position:relative;background:#fff;border-radius:22px;width:min(560px,100%);
+    max-height:86vh;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(74,59,44,.25);
+    animation:popIn .18s ease-out;
+  }
+  @keyframes popIn{from{transform:translateY(14px);opacity:0;}to{transform:none;opacity:1;}}
+  .modal-head{
+    display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;
+    border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  .modal-head h3{font-size:16.5px;font-weight:800;}
+  .modal-body{padding:16px 18px 20px;overflow-y:auto;}
+  .form .label{display:block;font-size:13px;font-weight:650;color:var(--primary-deep);margin:14px 0 6px;}
+  .form .label:first-child{margin-top:0;}
+  .input,.form select,.form textarea{
+    width:100%;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+    padding:11px 13px;background:var(--card-warm);outline:none;transition:border .15s;
+  }
+  .input:focus,.form select:focus,.form textarea:focus{border-color:var(--accent);}
+  .form textarea{resize:vertical;min-height:72px;}
+  .seg{display:flex;gap:0;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
+  .seg-btn{
+    flex:1;min-height:44px;font-size:13px;font-weight:600;color:var(--text-soft);
+    background:var(--card-warm);border-right:1px solid var(--border);
+  }
+  .seg-btn:last-child{border-right:none;}
+  .seg-btn.active{background:var(--primary-deep);color:#fff;}
+  .seg-btn.active.p0{background:var(--danger);}
+  .seg-btn.active.p1{background:var(--accent-deep);}
+  .form-actions{display:flex;gap:10px;margin-top:20px;}
+  .form-actions .btn{flex:1;}
+  .img-previews{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .img-thumb{position:relative;width:72px;height:72px;border-radius:10px;overflow:hidden;border:1.5px solid var(--border);}
+  .img-thumb img{width:100%;height:100%;object-fit:cover;}
+  .img-thumb .rm{
+    position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;
+    background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;
+  }
+  .file-btn{
+    display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:0 16px;margin-top:8px;
+    border:1.5px dashed var(--primary);border-radius:var(--radius-sm);color:var(--primary-deep);
+    font-size:13px;font-weight:600;
+  }
+  .detail-rows{display:flex;flex-direction:column;gap:12px;}
+  .d-row .d-label{font-size:11.5px;color:var(--text-soft);font-weight:650;margin-bottom:3px;}
+  .d-row .d-val{font-size:14.5px;word-break:break-word;}
+  .d-row .d-val.pre{white-space:pre-wrap;background:var(--card-warm);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border);}
+  .link-btn{
+    display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 16px;margin-top:4px;
+    background:var(--info-soft);color:var(--info);border-radius:var(--radius-sm);font-size:13.5px;font-weight:650;
+    text-decoration:none;word-break:break-all;
+  }
+  .confirm-msg{font-size:14.5px;color:var(--text);margin:4px 0 2px;line-height:1.7;}
+  .folder-row{
+    display:flex;align-items:center;gap:10px;padding:12px 10px;border-bottom:1px solid var(--border);
+  }
+  .folder-row:last-child{border-bottom:none;}
+  .folder-row .f-name{flex:1;font-size:14.5px;font-weight:650;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .folder-row .f-cnt{font-size:12px;color:var(--text-soft);flex-shrink:0;}
+  .icon-btn.edit:hover{background:var(--accent-soft);color:var(--accent-deep);}
+
+  /* ---------- 图片灯箱 ---------- */
+  .lightbox{position:fixed;inset:0;z-index:200;background:rgba(40,32,24,.9);display:flex;align-items:center;justify-content:center;padding:20px;}
+  .lightbox.hidden{display:none;}
+  .lightbox img{max-width:92vw;max-height:88vh;border-radius:12px;}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:calc(var(--nav-h) + 90px);transform:translateX(-50%);
+    background:rgba(74,59,44,.92);color:#fff;font-size:13.5px;padding:10px 20px;
+    border-radius:999px;z-index:300;white-space:nowrap;animation:popIn .2s;
+  }
+  .toast.hidden{display:none;}
+
+  footer{
+    max-width:960px;margin:0 auto;padding:0 16px 26px;text-align:center;
+    font-size:12px;color:#C4B79F;
+  }
+
+  /* ---------- 桌面端 ---------- */
+  @media (min-width:768px){
+    .app-header{padding-top:26px;}
+    .title-wrap h1{font-size:24px;}
+    main{padding-bottom:60px;}
+    #fab{bottom:34px;right:34px;}
+    .toast{bottom:110px;}
+    #main-nav{max-width:960px;}
+    .nav-btn{flex-direction:row;gap:8px;justify-content:center;padding:12px 8px;font-size:14px;}
+  }
+
+  /* ---------- 移动端 ---------- */
+  @media (max-width:767px){
+    .modal{align-items:flex-end;}
+    .modal-card{
+      width:100%;border-radius:22px 22px 0 0;max-height:88vh;
+      padding-bottom:env(safe-area-inset-bottom);
+    }
+    #main-nav{
+      position:fixed;left:0;right:0;bottom:0;margin:0;max-width:none;
+      background:rgba(255,253,249,.96);backdrop-filter:blur(10px);
+      border-top:1px solid var(--border);
+      padding:6px 10px calc(6px + env(safe-area-inset-bottom));
+      gap:4px;z-index:60;
+    }
+    .nav-btn{background:none;border:none;flex:1;}
+    .nav-btn.active{background:none;box-shadow:none;border-color:transparent;color:var(--accent-deep);}
+    main{padding-bottom:calc(var(--nav-h) + 100px);}
+    .stats-grid{grid-template-columns:repeat(2,1fr);}
+    .cd-num{font-size:26px;}
+    .today-item,.task-card,.cd-card{padding:12px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-left">
+    <div class="logo">
+      <svg viewBox="0 0 120 104" width="50" height="44" aria-label="卡皮巴拉">
+        <circle cx="60" cy="17" r="11" fill="#F5A83C"/>
+        <path d="M60 6 Q63 0 69 2 Q65 7 60 6 Z" fill="#7FA96B"/>
+        <ellipse cx="26" cy="46" rx="11" ry="13" fill="#8A6F52" transform="rotate(-15 26 46)"/>
+        <ellipse cx="94" cy="46" rx="11" ry="13" fill="#8A6F52" transform="rotate(15 94 46)"/>
+        <ellipse cx="26" cy="47" rx="6" ry="7.5" fill="#6E5840" transform="rotate(-15 26 47)"/>
+        <ellipse cx="94" cy="47" rx="6" ry="7.5" fill="#6E5840" transform="rotate(15 94 47)"/>
+        <ellipse cx="60" cy="62" rx="42" ry="36" fill="#B9946F"/>
+        <path d="M49 28 Q46 21 43 18" stroke="#8A6F52" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M71 28 Q74 21 77 18" stroke="#8A6F52" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M40 57 Q45 62 50 57" stroke="#5C4A38" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M70 57 Q75 62 80 57" stroke="#5C4A38" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="33" cy="72" rx="7" ry="4.5" fill="#E8A98C" opacity="0.75"/>
+        <ellipse cx="87" cy="72" rx="7" ry="4.5" fill="#E8A98C" opacity="0.75"/>
+        <ellipse cx="60" cy="70" rx="7" ry="5" fill="#5C4A38"/>
+        <path d="M60 75 L60 80 M60 80 Q55 84 51 81 M60 80 Q65 84 69 81" stroke="#5C4A38" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="title-wrap">
+      <div class="title-row">
+        <h1 id="app-title">卡皮巴拉任务台</h1>
+        <button class="title-edit" onclick="openTitleForm()" title="修改名称" aria-label="修改名称">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z" stroke="#8A6F52" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M13.5 6.5l4 4" stroke="#8A6F52" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <p id="header-date"></p>
+    </div>
+  </div>
+  <span class="badge-local">本地保存 · 数据在身边</span>
+</div>
+
+<div id="backup-banner" class="backup-banner hidden">
+  <div class="inner">
+    <span id="backup-text">数据已经积累不少啦，建议导出一份备份～</span>
+    <button onclick="exportJSON()">导出备份</button>
+    <button onclick="dismissBackup()" style="background:none;color:#B58A4A;">暂不</button>
+  </div>
+</div>
+
+<section class="today-section">
+  <div class="today-card">
+    <div class="section-head">
+      <h2><span class="hicon" id="today-icon"></span>今天要处理</h2>
+      <span class="section-count" id="today-count"></span>
+    </div>
+    <div id="today-list"></div>
+    <div class="today-habits" id="today-habits"></div>
+  </div>
+</section>
+
+<nav id="main-nav">
+  <button class="nav-btn active" data-tab="tasks" onclick="setTab('tasks')">
+    <span class="nicon" data-icon="task"></span><span>任务</span>
+  </button>
+  <button class="nav-btn" data-tab="countdown" onclick="setTab('countdown')">
+    <span class="nicon" data-icon="clock"></span><span>倒计时</span>
+  </button>
+  <button class="nav-btn" data-tab="habits" onclick="setTab('habits')">
+    <span class="nicon" data-icon="habit"></span><span>打卡</span>
+  </button>
+  <button class="nav-btn" data-tab="data" onclick="setTab('data')">
+    <span class="nicon" data-icon="data"></span><span>数据</span>
+  </button>
+</nav>
+
+<main>
+  <!-- 任务清单 -->
+  <section id="view-tasks" class="view">
+    <div class="view-head">
+      <div>
+        <h2><span class="hicon" data-icon="task"></span>任务清单</h2>
+        <div class="sub">点任务卡片看详情 · 圆圈按钮一键完成</div>
+      </div>
+    </div>
+    <div class="folder-tabs" id="folder-tabs"></div>
+    <div id="task-list"></div>
+  </section>
+
+  <!-- 倒计时 -->
+  <section id="view-countdown" class="view hidden">
+    <div class="view-head">
+      <div>
+        <h2><span class="hicon" data-icon="clock"></span>重要倒计时</h2>
+        <div class="sub">点卡片看详情和报名链接</div>
+      </div>
+    </div>
+    <div id="countdown-list"></div>
+  </section>
+
+  <!-- 习惯打卡 -->
+  <section id="view-habits" class="view hidden">
+    <div class="view-head">
+      <div>
+        <h2><span class="hicon" data-icon="habit"></span>习惯打卡</h2>
+        <div class="sub">连续打卡 · 点日历格子可以补卡</div>
+      </div>
+    </div>
+    <div id="habit-list"></div>
+  </section>
+
+  <!-- 数据管理 -->
+  <section id="view-data" class="view hidden">
+    <div class="view-head">
+      <div>
+        <h2><span class="hicon" data-icon="data"></span>数据管理</h2>
+        <div class="sub">备份、恢复、清理都在这里</div>
+      </div>
+    </div>
+    <div class="data-card">
+      <h3>概览</h3>
+      <div class="stats-grid" id="stats-grid"></div>
+    </div>
+    <div class="data-card">
+      <h3>备份与恢复</h3>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="exportJSON()"><span data-icon="download"></span>导出 JSON 备份</button>
+        <button class="btn btn-outline" onclick="document.getElementById('import-file').click()"><span data-icon="upload"></span>导入恢复</button>
+        <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importJSONFile(this)">
+      </div>
+      <p class="data-note" style="margin-top:10px;">导出的 JSON 文件包含全部任务、文件夹、倒计时和打卡记录。换设备或换浏览器时，用「导入恢复」就能把数据搬过去。</p>
+    </div>
+    <div class="data-card" id="sample-card">
+      <h3>示例数据</h3>
+      <p class="data-note" style="margin-bottom:10px;" id="sample-note"></p>
+      <div class="btn-row" id="sample-btns"></div>
+    </div>
+    <div class="data-card">
+      <h3>危险区域</h3>
+      <p class="data-note" style="margin-bottom:10px;">清空后所有数据都无法找回，请先导出备份再操作。</p>
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="clearAll()"><span data-icon="trash"></span>清空全部数据</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<button id="fab" onclick="fabAction()" aria-label="新增">
+  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<footer>卡皮巴拉说：慢慢来，事情都会做完的～ 🧡</footer>
+
+<!-- 弹窗 -->
+<div id="modal" class="modal hidden">
+  <div class="modal-mask" onclick="closeModal()"></div>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modal-title"></h3>
+      <button class="icon-btn" onclick="closeModal()" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div id="lightbox" class="lightbox hidden" onclick="this.classList.add('hidden')">
+  <img id="lightbox-img" src="" alt="附件图片">
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* =========================================================
+   卡皮巴拉任务台 · 单文件本地应用
+   数据存储：localStorage（key: wb_capybara_v1）
+   ========================================================= */
+
+var DB_KEY = 'wb_capybara_v1';
+var BACKUP_ACK_KEY = 'wb_capybara_backup_ack';
+var TITLE_KEY = 'wb_capybara_title';
+var db = null;
+var currentTab = 'tasks';
+var folderFilter = 'all';
+var formImages = []; // 任务表单里的临时图片
+var toastTimer = null;
+
+/* ---------- 图标（内联 SVG，不用 emoji） ---------- */
+var ICONS = {
+  task: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l3 3 5-6.5"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2.5"/></svg>',
+  habit: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18M9 15.5l2 2 4-4"/></svg>',
+  data: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M7 10l5 5 5-5M4 19h16"/></svg>',
+  flame: '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2c.8 3.4 4.6 4.7 4.6 8.7a4.6 4.6 0 0 1-9.2 0c0-1.7.8-2.8 1.7-4.1.2 1.6.9 2.4 1.9 2.7-.8-2.6-.1-5.5 1-7.3z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+  checkBig: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  link: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 13.5a4.5 4.5 0 0 0 6.4 0l2-2a4.5 4.5 0 0 0-6.4-6.4l-1 1M13.5 10.5a4.5 4.5 0 0 0-6.4 0l-2 2a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>',
+  extLink: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5M19 5l-8 8M19 14v5H5V5h5"/></svg>',
+  image: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>',
+  note: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>',
+  download: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M7 10l5 5 5-5M4 20h16"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M4 20h16"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 17H2L12 3z"/><path d="M12 10v4M12 17.5v.01"/></svg>'
+};
+
+var FOLDER_COLORS = [
+  {bg:'#F3E5D8', fg:'#8A6F52'},
+  {bg:'#E8F0E0', fg:'#6E8F5B'},
+  {bg:'#E3ECF5', fg:'#5F7F9E'},
+  {bg:'#F5E3EB', fg:'#B07290'},
+  {bg:'#EAE3F5', fg:'#7E6BA8'},
+  {bg:'#F5EDD8', fg:'#A98B3F'}
+];
+var HABIT_COLORS = ['#E08A2E','#7FA96B','#5F7F9E','#C9839E','#8B79C4','#B8987F'];
+
+/* ---------- 工具函数 ---------- */
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function uid(p){ return p + Date.now().toString(36) + Math.floor(Math.random() * 10000); }
+function fmtLocal(d){
+  var y = d.getFullYear();
+  var m = ('0' + (d.getMonth() + 1)).slice(-2);
+  var day = ('0' + d.getDate()).slice(-2);
+  return y + '-' + m + '-' + day;
+}
+function todayStr(){ return fmtLocal(new Date()); }
+function dateOffset(n){
+  var d = new Date();
+  d.setDate(d.getDate() + n);
+  return fmtLocal(d);
+}
+function daysUntil(dateStr){
+  var t = new Date(todayStr() + 'T00:00:00');
+  var d = new Date(dateStr + 'T00:00:00');
+  return Math.round((d - t) / 86400000);
+}
+function findTask(id){
+  for (var i = 0; i < db.tasks.length; i++) if (db.tasks[i].id === id) return db.tasks[i];
+  return null;
+}
+function findCountdown(id){
+  for (var i = 0; i < db.countdowns.length; i++) if (db.countdowns[i].id === id) return db.countdowns[i];
+  return null;
+}
+function findHabit(id){
+  for (var i = 0; i < db.habits.length; i++) if (db.habits[i].id === id) return db.habits[i];
+  return null;
+}
+function findFolder(id){
+  for (var i = 0; i < db.folders.length; i++) if (db.folders[i].id === id) return db.folders[i];
+  return null;
+}
+function folderColor(id){
+  var idx = 0;
+  for (var i = 0; i < db.folders.length; i++){
+    if (db.folders[i].id === id){ idx = i; break; }
+  }
+  return FOLDER_COLORS[idx % FOLDER_COLORS.length];
+}
+
+/* ---------- 数据层 ---------- */
+function defaultData(){
+  return {
+    folders: [],
+    tasks: [],
+    countdowns: [],
+    habits: [],
+    initialized: true
+  };
+}
+function load(){
+  try{
+    var raw = localStorage.getItem(DB_KEY);
+    if (raw){
+      db = JSON.parse(raw);
+      if (!db.folders) db.folders = [];
+      if (!db.tasks) db.tasks = [];
+      if (!db.countdowns) db.countdowns = [];
+      if (!db.habits) db.habits = [];
+    } else {
+      db = defaultData();
+      save();
+    }
+  }catch(e){
+    db = defaultData();
+  }
+}
+function save(){
+  try{
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+  }catch(e){
+    showToast('保存失败：存储空间可能满了（图片太多）');
+  }
+}
+
+/* ---------- 示例数据 ---------- */
+function seedSample(){
+  var fStudy = {id: uid('f'), name: '学习', sample: true};
+  var fLife = {id: uid('f'), name: '个人事务', sample: true};
+  db.folders.push(fStudy, fLife);
+
+  db.tasks.push(
+    {id: uid('t'), title: '提交英语作文初稿', folderId: fStudy.id, priority: 'P0',
+     dueDate: dateOffset(-1), status: 'doing', note: '根据老师上次的批注做第二轮修改，重点检查论证结构。', images: [],
+     createdAt: Date.now() - 86400000 * 3, sample: true},
+    {id: uid('t'), title: '预习下周《现代文学》阅读材料', folderId: fStudy.id, priority: 'P1',
+     dueDate: dateOffset(0), status: 'todo', note: '', images: [],
+     createdAt: Date.now() - 86400000, sample: true},
+    {id: uid('t'), title: '雅思单词打卡（APP）', folderId: fStudy.id, priority: 'P1',
+     dueDate: dateOffset(1), status: 'doing', note: '', images: [],
+     createdAt: Date.now() - 86400000, sample: true},
+    {id: uid('t'), title: '健身训练 · 上肢日', folderId: fLife.id, priority: 'P2',
+     dueDate: dateOffset(3), status: 'todo', note: '', images: [],
+     createdAt: Date.now(), sample: true},
+    {id: uid('t'), title: '整理社团活动策划笔记', folderId: fLife.id, priority: 'P2',
+     dueDate: dateOffset(7), status: 'done', note: '已归档到笔记本第二节。', images: [],
+     createdAt: Date.now() - 86400000 * 2, completedAt: Date.now() - 86400000, sample: true}
+  );
+
+  db.countdowns.push(
+    {id: uid('c'), title: '英语演讲比赛 · 报名截止', date: dateOffset(3),
+     link: 'https://example.com/signup', info: '校级比赛，报名需提交姓名、学号和联系方式；初赛为 3 分钟定题演讲，前三名晋级省级比赛。', note: '', sample: true},
+    {id: uid('c'), title: '期中考试开始', date: dateOffset(21), link: '', info: '', note: '考场安排届时关注教务通知。', sample: true},
+    {id: uid('c'), title: '秋季社团招新截止', date: dateOffset(10), link: '', info: '', note: '', sample: true}
+  );
+
+  var h1 = {id: uid('h'), name: '每日阅读', records: {}, sample: true};
+  var h2 = {id: uid('h'), name: '背单词 50 个', records: {}, sample: true};
+  var h3 = {id: uid('h'), name: '运动 / 健身', records: {}, sample: true};
+  for (var i = 1; i <= 20; i++){
+    if (i % 3 !== 0) h1.records[dateOffset(-i)] = true;
+    if (i % 2 === 0) h2.records[dateOffset(-i)] = true;
+    if (i % 4 === 1) h3.records[dateOffset(-i)] = true;
+  }
+  db.habits.push(h1, h2, h3);
+}
+
+/* ---------- Toast / 弹窗 / 灯箱 ---------- */
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.add('hidden'); }, 2200);
+}
+function openModal(title, html){
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(){
+  document.getElementById('modal').classList.add('hidden');
+  document.getElementById('modal-body').innerHTML = '';
+  document.body.style.overflow = '';
+}
+function showImage(src){
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.remove('hidden');
+}
+function confirmDialog(title, msg, onOk){
+  window.__confirmOk = onOk;
+  openModal(title,
+    '<p class="confirm-msg">' + esc(msg) + '</p>' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+    '<button class="btn btn-danger" onclick="runConfirmOk()">确定</button>' +
+    '</div>');
+}
+function runConfirmOk(){
+  var fn = window.__confirmOk;
+  window.__confirmOk = null;
+  closeModal();
+  if (fn) fn();
+}
+
+/* ---------- Tab 切换 ---------- */
+function setTab(tab){
+  currentTab = tab;
+  var views = ['tasks', 'countdown', 'habits', 'data'];
+  for (var i = 0; i < views.length; i++){
+    var v = document.getElementById('view-' + views[i]);
+    if (v) v.classList.toggle('hidden', views[i] !== tab);
+  }
+  var btns = document.querySelectorAll('.nav-btn');
+  for (var j = 0; j < btns.length; j++){
+    btns[j].classList.toggle('active', btns[j].getAttribute('data-tab') === tab);
+  }
+  document.getElementById('fab').classList.toggle('hidden', tab === 'data');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function fabAction(){
+  if (currentTab === 'tasks') openTaskForm();
+  else if (currentTab === 'countdown') openCountdownForm();
+  else if (currentTab === 'habits') openHabitForm();
+}
+
+/* ---------- 渲染：头部 ---------- */
+var WEEK_CN = ['日','一','二','三','四','五','六'];
+function renderHeader(){
+  var d = new Date();
+  var week = WEEK_CN[d.getDay()];
+  var quotes = ['慢慢来，比较快','先做今天的事','泡完温泉再做也行','一步一步来就好','今天也是情绪稳定的一天'];
+  var q = quotes[d.getDate() % quotes.length];
+  document.getElementById('header-date').textContent =
+    d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 · 周' + week + ' · ' + q;
+}
+
+/* ---------- 渲染：今天要处理 ---------- */
+function renderToday(){
+  var list = document.getElementById('today-list');
+  var items = [];
+
+  db.tasks.forEach(function(t){
+    if (t.status === 'done') return;
+    var d = t.dueDate ? daysUntil(t.dueDate) : null;
+    if (d !== null && d <= 3) items.push({kind: 'task', d: d, obj: t});
+    else if (d === null && t.priority === 'P0') items.push({kind: 'task', d: 9999, obj: t});
+  });
+  db.countdowns.forEach(function(c){
+    var d = daysUntil(c.date);
+    if (d <= 7) items.push({kind: 'cd', d: d, obj: c});
+  });
+
+  items.sort(function(a, b){ return a.d - b.d; });
+
+  var html = '';
+  if (items.length === 0){
+    html = '<div class="empty-today">' +
+      '<svg viewBox="0 0 200 110" width="150" height="83">' +
+      '<ellipse cx="100" cy="92" rx="82" ry="17" fill="#DCE9EC"/>' +
+      '<ellipse cx="100" cy="88" rx="74" ry="13" fill="#B9D8E0"/>' +
+      '<ellipse cx="30" cy="46" rx="8" ry="9" fill="#8A6F52"/>' +
+      '<ellipse cx="70" cy="46" rx="8" ry="9" fill="#8A6F52"/>' +
+      '<ellipse cx="100" cy="58" rx="42" ry="32" fill="#B9946F"/>' +
+      '<path d="M88 28 Q86 22 83 19" stroke="#8A6F52" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M112 28 Q114 22 117 19" stroke="#8A6F52" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M74 52 Q79 57 84 52" stroke="#5C4A38" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+      '<path d="M116 52 Q121 57 126 52" stroke="#5C4A38" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+      '<ellipse cx="70" cy="66" rx="6" ry="3.8" fill="#E8A98C" opacity=".75"/>' +
+      '<ellipse cx="130" cy="66" rx="6" ry="3.8" fill="#E8A98C" opacity=".75"/>' +
+      '<ellipse cx="100" cy="64" rx="6" ry="4.4" fill="#5C4A38"/>' +
+      '<circle cx="158" cy="86" r="8" fill="#F5A83C"/>' +
+      '<path d="M55 20 Q59 12 55 4" stroke="#C9BCA8" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".7"/>' +
+      '<path d="M70 16 Q74 8 70 0" stroke="#C9BCA8" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".7"/>' +
+      '</svg>' +
+      '<p>都处理完啦～水豚替你泡着温泉呢</p></div>';
+  } else {
+    items.forEach(function(it){
+      if (it.kind === 'task'){
+        var t = it.obj;
+        var d = it.d;
+        var dueChip = '';
+        if (d < 0) dueChip = '<span class="mini-chip chip-red">逾期 ' + (-d) + ' 天 · 顺延到今天</span>';
+        else if (d === 0) dueChip = '<span class="mini-chip chip-orange">今天到期</span>';
+        else dueChip = '<span class="mini-chip chip-brown">' + d + ' 天后到期</span>';
+        var folder = findFolder(t.folderId);
+        var fc = folderColor(t.folderId);
+        var folderChip = folder ? '<span class="mini-chip" style="background:' + fc.bg + ';color:' + fc.fg + '">' + esc(folder.name) + '</span>' : '';
+        var prChip = '<span class="mini-chip ' + (t.priority === 'P0' ? 'chip-red' : (t.priority === 'P1' ? 'chip-orange' : 'chip-gray')) + '">' + t.priority + '</span>';
+        html += '<div class="today-item' + (d < 0 ? ' overdue' : '') + '">' +
+          '<div class="ti-main"><div class="ti-title"><span class="ti-txt">' + esc(t.title) + '</span></div>' +
+          '<div class="ti-meta">' + dueChip + prChip + folderChip + '</div></div>' +
+          '<button class="done-btn" onclick="toggleTaskDone(\'' + t.id + '\')" title="标记完成">' + ICONS.check + '</button>' +
+          '</div>';
+      } else {
+        var c = it.obj;
+        var d2 = it.d;
+        var cdChip = '';
+        if (d2 < 0) cdChip = '<span class="mini-chip chip-red">已过期 ' + (-d2) + ' 天</span>';
+        else if (d2 === 0) cdChip = '<span class="mini-chip chip-red">就是今天！</span>';
+        else cdChip = '<span class="mini-chip chip-orange">还剩 ' + d2 + ' 天</span>';
+        html += '<div class="today-item' + (d2 <= 1 ? ' overdue' : '') + '">' +
+          '<div class="ti-main"><div class="ti-title"><span class="ti-ic">' + ICONS.clock + '</span><span class="ti-txt">' + esc(c.title) + '</span></div>' +
+          '<div class="ti-meta">' + cdChip + '<span class="mini-chip chip-brown">倒计时</span>' +
+          (c.link ? '<span class="mini-chip chip-blue">有链接</span>' : '') + '</div></div>' +
+          '<button class="done-btn" style="border-color:var(--info);color:var(--info)" onclick="showCountdownDetail(\'' + c.id + '\')" title="查看详情">' + ICONS.extLink + '</button>' +
+          '</div>';
+      }
+    });
+  }
+  list.innerHTML = html;
+
+  var cnt = document.getElementById('today-count');
+  var pending = items.filter(function(i){ return i.kind === 'task'; }).length;
+  if (items.length === 0){
+    cnt.textContent = '0 项';
+    cnt.className = 'section-count ok';
+  } else {
+    cnt.textContent = items.length + ' 项' + (pending ? ' · 待办 ' + pending : '');
+    cnt.className = 'section-count';
+  }
+
+  // 今日打卡行
+  var th = document.getElementById('today-habits');
+  if (db.habits.length > 0){
+    var hHtml = '<span class="today-habits-label">今日打卡</span>';
+    var today = todayStr();
+    db.habits.forEach(function(h){
+      var on = h.records && h.records[today];
+      hHtml += '<button class="th-chip' + (on ? ' on' : '') + '" onclick="toggleHabitToday(\'' + h.id + '\')">' +
+        (on ? ICONS.check : ICONS.flame) + esc(h.name) + '</button>';
+    });
+    th.innerHTML = hHtml;
+  } else {
+    th.innerHTML = '';
+  }
+}
+
+/* ---------- 渲染：文件夹标签 ---------- */
+function setFolderFilter(id){
+  folderFilter = id;
+  renderTasks();
+}
+function renderFolderTabs(){
+  var el = document.getElementById('folder-tabs');
+  var html = '';
+  function countIn(fid){
+    return db.tasks.filter(function(t){ return t.folderId === fid && t.status !== 'done'; }).length;
+  }
+  html += '<button class="f-tab' + (folderFilter === 'all' ? ' active' : '') + '" onclick="setFolderFilter(\'all\')">' + ICONS.folder + '全部 <span class="cnt">' + db.tasks.filter(function(t){return t.status !== 'done';}).length + '</span></button>';
+  db.folders.forEach(function(f){
+    html += '<button class="f-tab' + (folderFilter === f.id ? ' active' : '') + '" onclick="setFolderFilter(\'' + f.id + '\')">' +
+      esc(f.name) + ' <span class="cnt">' + countIn(f.id) + '</span></button>';
+  });
+  html += '<button class="f-tab manage" onclick="openFolderManager()">' + ICONS.plus + '文件夹</button>';
+  el.innerHTML = html;
+}
+
+/* ---------- 渲染：任务列表 ---------- */
+function taskSort(a, b){
+  var aDone = a.status === 'done', bDone = b.status === 'done';
+  if (aDone !== bDone) return aDone ? 1 : -1;
+  var da = a.dueDate ? daysUntil(a.dueDate) : 9999;
+  var dbv = b.dueDate ? daysUntil(b.dueDate) : 9999;
+  if (da !== dbv) return da - dbv;
+  var pr = {P0: 0, P1: 1, P2: 2};
+  if (pr[a.priority] !== pr[b.priority]) return pr[a.priority] - pr[b.priority];
+  return (b.createdAt || 0) - (a.createdAt || 0);
+}
+function renderTasks(){
+  renderFolderTabs();
+  var listEl = document.getElementById('task-list');
+  var tasks = db.tasks.slice().sort(taskSort);
+  if (folderFilter !== 'all'){
+    tasks = tasks.filter(function(t){ return t.folderId === folderFilter; });
+  }
+  if (tasks.length === 0){
+    listEl.innerHTML = '<div class="empty-today" style="padding:22px 0">' +
+      '<p>这里还没有任务，点右下角 + 新建一条吧</p></div>';
+    return;
+  }
+  var html = '';
+  tasks.forEach(function(t){
+    var folder = findFolder(t.folderId);
+    var fc = folderColor(t.folderId);
+    var folderChip = folder ? '<span class="mini-chip" style="background:' + fc.bg + ';color:' + fc.fg + '">' + esc(folder.name) + '</span>' : '<span class="mini-chip chip-gray">未分类</span>';
+    var prClass = t.priority === 'P0' ? 'chip-red' : (t.priority === 'P1' ? 'chip-orange' : 'chip-gray');
+    var dueChip = '';
+    if (t.status !== 'done' && t.dueDate){
+      var d = daysUntil(t.dueDate);
+      if (d < 0) dueChip = '<span class="mini-chip chip-red">逾期 ' + (-d) + ' 天</span>';
+      else if (d === 0) dueChip = '<span class="mini-chip chip-orange">今天</span>';
+      else if (d <= 3) dueChip = '<span class="mini-chip chip-brown">' + d + ' 天后</span>';
+      else dueChip = '<span class="mini-chip chip-gray">' + t.dueDate.slice(5) + '</span>';
+    } else if (t.dueDate){
+      dueChip = '<span class="mini-chip chip-gray">' + t.dueDate.slice(5) + '</span>';
+    }
+    var statusChip = '';
+    if (t.status === 'doing') statusChip = '<span class="mini-chip chip-blue">进行中</span>';
+    if (t.status === 'done') statusChip = '<span class="mini-chip chip-green">已完成</span>';
+    var attach = '';
+    if (t.images && t.images.length) attach += '<span class="t-attach">' + ICONS.image + t.images.length + ' 张图</span>';
+    if (t.note) attach += '<span class="t-attach">' + ICONS.note + '有备注</span>';
+
+    html += '<div class="task-card' + (t.status === 'done' ? ' done' : '') + '" onclick="showTaskDetail(\'' + t.id + '\')">' +
+      '<button class="t-check" onclick="event.stopPropagation();toggleTaskDone(\'' + t.id + '\')" title="切换完成">' + ICONS.check + '</button>' +
+      '<div class="t-main"><div class="t-title">' + esc(t.title) + '</div>' +
+      '<div class="t-meta"><span class="mini-chip ' + prClass + '">' + t.priority + '</span>' + folderChip + dueChip + statusChip + attach + '</div>' +
+      '</div></div>';
+  });
+  listEl.innerHTML = html;
+}
+
+/* ---------- 任务：表单 ---------- */
+function openTaskForm(id){
+  var t = id ? findTask(id) : null;
+  formImages = t && t.images ? t.images.slice() : [];
+  var titleVal = t ? t.title : '';
+  var folderVal = t ? (t.folderId || '') : (folderFilter !== 'all' ? folderFilter : '');
+  var dueVal = t && t.dueDate ? t.dueDate : '';
+  var prVal = t ? t.priority : 'P1';
+  var stVal = t ? t.status : 'todo';
+  var noteVal = t && t.note ? t.note : '';
+
+  var folderOpts = '<option value="">未分类</option>';
+  db.folders.forEach(function(f){
+    folderOpts += '<option value="' + f.id + '"' + (f.id === folderVal ? ' selected' : '') + '>' + esc(f.name) + '</option>';
+  });
+
+  var html = '<div class="form">' +
+    '<label class="label">任务标题</label>' +
+    '<input id="tf-title" class="input" maxlength="80" placeholder="要做什么呀～" value="' + esc(titleVal) + '">' +
+    '<label class="label">所属文件夹</label>' +
+    '<select id="tf-folder">' + folderOpts + '</select>' +
+    '<label class="label">优先级</label>' +
+    '<div class="seg" id="tf-priority">' +
+    '<button type="button" class="seg-btn p0' + (prVal === 'P0' ? ' active' : '') + '" data-v="P0" onclick="setSeg(this)">P0 · 今天必须</button>' +
+    '<button type="button" class="seg-btn p1' + (prVal === 'P1' ? ' active' : '') + '" data-v="P1" onclick="setSeg(this)">P1 · 本周完成</button>' +
+    '<button type="button" class="seg-btn' + (prVal === 'P2' ? ' active' : '') + '" data-v="P2" onclick="setSeg(this)">P2 · 有空就做</button>' +
+    '</div>' +
+    '<label class="label">截止日期（可选）</label>' +
+    '<input id="tf-due" class="input" type="date" value="' + dueVal + '">' +
+    '<label class="label">状态</label>' +
+    '<div class="seg" id="tf-status">' +
+    '<button type="button" class="seg-btn' + (stVal === 'todo' ? ' active' : '') + '" data-v="todo" onclick="setSeg(this)">未开始</button>' +
+    '<button type="button" class="seg-btn' + (stVal === 'doing' ? ' active' : '') + '" data-v="doing" onclick="setSeg(this)">进行中</button>' +
+    '<button type="button" class="seg-btn' + (stVal === 'done' ? ' active' : '') + '" data-v="done" onclick="setSeg(this)">已完成</button>' +
+    '</div>' +
+    '<label class="label">备注（可选）</label>' +
+    '<textarea id="tf-note" maxlength="500" placeholder="补充说明、要求、心得……">' + esc(noteVal) + '</textarea>' +
+    '<label class="label">图片附件（最多 9 张，截图/参考图）</label>' +
+    '<div id="tf-imgs" class="img-previews"></div>' +
+    '<button type="button" class="file-btn" onclick="document.getElementById(\'tf-file\').click()">' + ICONS.image + '添加图片</button>' +
+    '<input type="file" id="tf-file" accept="image/*" multiple style="display:none" onchange="addTaskImages(this)">' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+    '<button class="btn btn-primary" onclick="saveTask(\'' + (t ? t.id : '') + '\')">保存</button>' +
+    '</div></div>';
+
+  openModal(t ? '编辑任务' : '新建任务', html);
+  renderFormImages();
+}
+function setSeg(btn){
+  var siblings = btn.parentNode.querySelectorAll('.seg-btn');
+  for (var i = 0; i < siblings.length; i++) siblings[i].classList.remove('active');
+  btn.classList.add('active');
+}
+function getSegVal(id){
+  var active = document.querySelector('#' + id + ' .seg-btn.active');
+  return active ? active.getAttribute('data-v') : null;
+}
+function renderFormImages(){
+  var el = document.getElementById('tf-imgs');
+  if (!el) return;
+  var html = '';
+  formImages.forEach(function(src, i){
+    html += '<div class="img-thumb"><img src="' + src + '" onclick="showImage(\'' + '\')" alt="附件">' +
+      '<button class="rm" onclick="removeFormImage(' + i + ')">' +
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+  });
+  el.innerHTML = html;
+  // 绑定图片点击预览
+  var thumbs = el.querySelectorAll('img');
+  for (var k = 0; k < thumbs.length; k++){
+    (function(idx){
+      thumbs[idx].onclick = function(){ showImage(formImages[idx]); };
+    })(k);
+  }
+}
+function removeFormImage(i){
+  formImages.splice(i, 1);
+  renderFormImages();
+}
+function addTaskImages(input){
+  var files = input.files;
+  if (!files || files.length === 0) return;
+  var remaining = 9 - formImages.length;
+  if (remaining <= 0){ showToast('最多只能放 9 张图哦'); input.value = ''; return; }
+  var toAdd = Math.min(files.length, remaining);
+  if (files.length > remaining) showToast('最多 9 张，超出部分没有添加');
+  var done = 0;
+  for (var i = 0; i < toAdd; i++){
+    (function(file){
+      compressImage(file, function(dataUrl){
+        formImages.push(dataUrl);
+        done++;
+        if (done === toAdd){ renderFormImages(); save(); }
+      });
+    })(files[i]);
+  }
+  input.value = '';
+}
+function compressImage(file, cb){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var maxW = 800;
+      var w = img.width, h = img.height;
+      if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+      var c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = function(){ showToast('有张图片读取失败了'); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function saveTask(id){
+  var title = document.getElementById('tf-title').value.trim();
+  if (!title){ showToast('先写一下任务标题吧'); return; }
+  var folderId = document.getElementById('tf-folder').value || null;
+  var priority = getSegVal('tf-priority') || 'P1';
+  var status = getSegVal('tf-status') || 'todo';
+  var due = document.getElementById('tf-due').value || null;
+  var note = document.getElementById('tf-note').value.trim();
+
+  if (id){
+    var t = findTask(id);
+    if (t){
+      t.title = title; t.folderId = folderId; t.priority = priority;
+      t.status = status; t.dueDate = due; t.note = note;
+      t.images = formImages.slice();
+      if (status === 'done' && !t.completedAt) t.completedAt = Date.now();
+      if (status !== 'done') t.completedAt = null;
+      t.sample = false;
+    }
+  } else {
+    db.tasks.push({
+      id: uid('t'), title: title, folderId: folderId, priority: priority,
+      status: status, dueDate: due, note: note, images: formImages.slice(),
+      createdAt: Date.now(), completedAt: status === 'done' ? Date.now() : null
+    });
+  }
+  save();
+  closeModal();
+  renderAll();
+  showToast('已保存');
+}
+
+/* ---------- 任务：详情 ---------- */
+function showTaskDetail(id){
+  var t = findTask(id);
+  if (!t) return;
+  var folder = findFolder(t.folderId);
+  var pr = t.priority === 'P0' ? '<span class="mini-chip chip-red">P0 · 今天必须</span>'
+        : t.priority === 'P1' ? '<span class="mini-chip chip-orange">P1 · 本周完成</span>'
+        : '<span class="mini-chip chip-gray">P2 · 有空就做</span>';
+  var st = t.status === 'done' ? '<span class="mini-chip chip-green">已完成</span>'
+        : t.status === 'doing' ? '<span class="mini-chip chip-blue">进行中</span>'
+        : '<span class="mini-chip chip-gray">未开始</span>';
+  var dueTxt = t.dueDate ? t.dueDate : '没有设置';
+  if (t.status !== 'done' && t.dueDate){
+    var d = daysUntil(t.dueDate);
+    if (d < 0) dueTxt += '（逾期 ' + (-d) + ' 天）';
+    else if (d === 0) dueTxt += '（就是今天）';
+    else dueTxt += '（还有 ' + d + ' 天）';
+  }
+
+  var html = '<div class="detail-rows">' +
+    '<div class="d-row"><div class="d-val" style="font-size:17px;font-weight:750">' + esc(t.title) + '</div>' +
+    '<div class="ti-meta" style="margin-top:8px">' + pr + st +
+    (folder ? '<span class="mini-chip chip-brown">' + esc(folder.name) + '</span>' : '<span class="mini-chip chip-gray">未分类</span>') +
+    '</div></div>' +
+    '<div class="d-row"><div class="d-label">截止日期</div><div class="d-val">' + esc(dueTxt) + '</div></div>';
+
+  if (t.note) html += '<div class="d-row"><div class="d-label">备注</div><div class="d-val pre">' + esc(t.note) + '</div></div>';
+
+  if (t.images && t.images.length){
+    html += '<div class="d-row"><div class="d-label">图片附件（' + t.images.length + ' 张，点击看大图）</div>' +
+      '<div class="img-previews">';
+    t.images.forEach(function(src, i){
+      html += '<div class="img-thumb" style="width:84px;height:84px"><img src="' + src + '" onclick="showImageById(\'' + t.id + '\',' + i + ')" alt="附件' + (i + 1) + '"></div>';
+    });
+    html += '</div></div>';
+  }
+
+  html += '<div class="form-actions">' +
+    (t.status !== 'done' ? '<button class="btn btn-ghost" onclick="toggleTaskDone(\'' + t.id + '\');closeModal()">' + ICONS.checkBig + '完成</button>' : '') +
+    '<button class="btn btn-outline" onclick="openTaskForm(\'' + t.id + '\')">' + ICONS.pencil + '编辑</button>' +
+    '<button class="btn btn-danger" onclick="deleteTaskConfirm(\'' + t.id + '\')">' + ICONS.trash + '删除</button>' +
+    '</div></div>';
+
+  openModal('任务详情', html);
+}
+function showImageById(taskId, idx){
+  var t = findTask(taskId);
+  if (t && t.images && t.images[idx]) showImage(t.images[idx]);
+}
+function toggleTaskDone(id){
+  var t = findTask(id);
+  if (!t) return;
+  if (t.status === 'done'){
+    t.status = 'todo';
+    t.completedAt = null;
+  } else {
+    t.status = 'done';
+    t.completedAt = Date.now();
+    t.sample = false;
+    showToast('完成啦，真棒！');
+  }
+  save();
+  renderAll();
+}
+function deleteTaskConfirm(id){
+  var t = findTask(id);
+  if (!t) return;
+  confirmDialog('删除任务', '确定删除「' + t.title + '」吗？删除后无法恢复。', function(){
+    db.tasks = db.tasks.filter(function(x){ return x.id !== id; });
+    save();
+    renderAll();
+    showToast('已删除');
+  });
+}
+
+/* ---------- 文件夹管理 ---------- */
+function openFolderManager(){
+  var html = '<div>';
+  if (db.folders.length === 0){
+    html += '<p class="confirm-msg" style="text-align:center;padding:10px 0">还没有文件夹</p>';
+  }
+  db.folders.forEach(function(f){
+    var cnt = db.tasks.filter(function(t){ return t.folderId === f.id; }).length;
+    var fc = folderColor(f.id);
+    html += '<div class="folder-row">' +
+      '<span class="habit-dot" style="background:' + fc.fg + '"></span>' +
+      '<span class="f-name">' + esc(f.name) + '</span>' +
+      '<span class="f-cnt">' + cnt + ' 条任务</span>' +
+      '<button class="icon-btn edit" onclick="openFolderForm(\'' + f.id + '\')" title="重命名">' + ICONS.pencil + '</button>' +
+      '<button class="icon-btn" onclick="deleteFolderConfirm(\'' + f.id + '\')" title="删除">' + ICONS.trash + '</button>' +
+      '</div>';
+  });
+  html += '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">关闭</button>' +
+    '<button class="btn btn-primary" onclick="openFolderForm()">' + ICONS.plus + '新建文件夹</button>' +
+    '</div></div>';
+  openModal('管理文件夹', html);
+}
+function openFolderForm(id){
+  var f = id ? findFolder(id) : null;
+  var html = '<div class="form">' +
+    '<label class="label">文件夹名称</label>' +
+    '<input id="ff-name" class="input" maxlength="16" placeholder="比如：学习 / 项目A / 社团" value="' + (f ? esc(f.name) : '') + '">' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+    '<button class="btn btn-primary" onclick="saveFolder(\'' + (f ? f.id : '') + '\')">保存</button>' +
+    '</div></div>';
+  openModal(f ? '重命名文件夹' : '新建文件夹', html);
+}
+function saveFolder(id){
+  var name = document.getElementById('ff-name').value.trim();
+  if (!name){ showToast('写个名字吧'); return; }
+  if (id){
+    var f = findFolder(id);
+    if (f) f.name = name;
+  } else {
+    var nf = {id: uid('f'), name: name};
+    db.folders.push(nf);
+  }
+  save();
+  closeModal();
+  renderAll();
+  showToast('已保存');
+}
+function deleteFolderConfirm(id){
+  var f = findFolder(id);
+  if (!f) return;
+  var cnt = db.tasks.filter(function(t){ return t.folderId === id; }).length;
+  var msg = '确定删除文件夹「' + f.name + '」吗？';
+  if (cnt > 0) msg += '里面的 ' + cnt + ' 条任务会变成「未分类」，不会被删除。';
+  confirmDialog('删除文件夹', msg, function(){
+    db.folders = db.folders.filter(function(x){ return x.id !== id; });
+    db.tasks.forEach(function(t){ if (t.folderId === id) t.folderId = null; });
+    if (folderFilter === id) folderFilter = 'all';
+    save();
+    renderAll();
+    showToast('已删除');
+  });
+}
+
+/* ---------- 倒计时 ---------- */
+function cdSort(a, b){
+  var da = daysUntil(a.date), dbv = daysUntil(b.date);
+  if (da < 0 && dbv < 0) return dbv - da; // 都过期：新过期的排前面
+  return da - dbv;
+}
+function renderCountdowns(){
+  var el = document.getElementById('countdown-list');
+  if (db.countdowns.length === 0){
+    el.innerHTML = '<div class="empty-today" style="padding:22px 0"><p>还没有倒计时，点右下角 + 加一个</p></div>';
+    return;
+  }
+  var list = db.countdowns.slice().sort(cdSort);
+  var html = '';
+  list.forEach(function(c){
+    var d = daysUntil(c.date);
+    var cls = d < 0 ? '' : (d <= 3 ? ' urgent' : (d <= 7 ? ' soon' : ''));
+    var num, unit;
+    if (d < 0){ num = '已过期'; unit = (-d) + ' 天前'; cls = ''; }
+    else if (d === 0){ num = '0'; unit = '就是今天'; cls = ' urgent'; }
+    else { num = String(d); unit = '天剩余'; }
+    html += '<div class="cd-card' + cls + '" onclick="showCountdownDetail(\'' + c.id + '\')">' +
+      '<div class="cd-days"><div class="cd-num"' + (d < 0 ? ' style="font-size:18px"' : '') + '>' + num + '</div>' +
+      '<div class="cd-unit">' + unit + '</div></div>' +
+      '<div class="cd-main"><div class="cd-title">' + esc(c.title) + '</div>' +
+      '<div class="cd-date">' + c.date + '</div>' +
+      (c.link ? '<span class="cd-haslink">' + ICONS.link + '有报名链接，点开查看</span>' : '') +
+      '</div></div>';
+  });
+  el.innerHTML = html;
+}
+function openCountdownForm(id){
+  var c = id ? findCountdown(id) : null;
+  var html = '<div class="form">' +
+    '<label class="label">事件名称</label>' +
+    '<input id="cf-title" class="input" maxlength="60" placeholder="比如：英语比赛报名截止" value="' + (c ? esc(c.title) : '') + '">' +
+    '<label class="label">日期</label>' +
+    '<input id="cf-date" class="input" type="date" value="' + (c ? c.date : '') + '">' +
+    '<label class="label">活动链接（可选）</label>' +
+    '<input id="cf-link" class="input" type="url" placeholder="https://… 报名/活动页面地址" value="' + (c ? esc(c.link || '') : '') + '">' +
+    '<label class="label">报名信息（可选）</label>' +
+    '<textarea id="cf-info" maxlength="500" placeholder="报名条件、需要准备的材料、联系人……">' + (c ? esc(c.info || '') : '') + '</textarea>' +
+    '<label class="label">备注（可选）</label>' +
+    '<textarea id="cf-note" maxlength="300" placeholder="其他想记下的">' + (c ? esc(c.note || '') : '') + '</textarea>' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+    '<button class="btn btn-primary" onclick="saveCountdown(\'' + (c ? c.id : '') + '\')">保存</button>' +
+    '</div></div>';
+  openModal(c ? '编辑倒计时' : '新建倒计时', html);
+}
+function saveCountdown(id){
+  var title = document.getElementById('cf-title').value.trim();
+  var date = document.getElementById('cf-date').value;
+  if (!title){ showToast('先写事件名称'); return; }
+  if (!date){ showToast('选一个日期'); return; }
+  var link = document.getElementById('cf-link').value.trim();
+  var info = document.getElementById('cf-info').value.trim();
+  var note = document.getElementById('cf-note').value.trim();
+  if (id){
+    var c = findCountdown(id);
+    if (c){ c.title = title; c.date = date; c.link = link; c.info = info; c.note = note; c.sample = false; }
+  } else {
+    db.countdowns.push({id: uid('c'), title: title, date: date, link: link, info: info, note: note});
+  }
+  save();
+  closeModal();
+  renderAll();
+  showToast('已保存');
+}
+function showCountdownDetail(id){
+  var c = findCountdown(id);
+  if (!c) return;
+  var d = daysUntil(c.date);
+  var state;
+  if (d < 0) state = '<span class="mini-chip chip-gray">已过期 ' + (-d) + ' 天</span>';
+  else if (d === 0) state = '<span class="mini-chip chip-red">就是今天！</span>';
+  else if (d <= 3) state = '<span class="mini-chip chip-red">还剩 ' + d + ' 天</span>';
+  else if (d <= 7) state = '<span class="mini-chip chip-orange">还剩 ' + d + ' 天</span>';
+  else state = '<span class="mini-chip chip-brown">还剩 ' + d + ' 天</span>';
+
+  var html = '<div class="detail-rows">' +
+    '<div class="d-row"><div class="d-val" style="font-size:17px;font-weight:750">' + esc(c.title) + '</div>' +
+    '<div class="ti-meta" style="margin-top:8px">' + state + '<span class="mini-chip chip-brown">' + c.date + '</span></div></div>';
+
+  if (c.link){
+    html += '<div class="d-row"><div class="d-label">活动链接</div>' +
+      '<a class="link-btn" href="' + esc(c.link) + '" target="_blank" rel="noopener noreferrer">' + ICONS.extLink + '打开活动 / 报名页面</a></div>';
+  }
+  if (c.info) html += '<div class="d-row"><div class="d-label">报名信息</div><div class="d-val pre">' + esc(c.info) + '</div></div>';
+  if (c.note) html += '<div class="d-row"><div class="d-label">备注</div><div class="d-val pre">' + esc(c.note) + '</div></div>';
+
+  html += '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="openCountdownForm(\'' + c.id + '\')">' + ICONS.pencil + '编辑</button>' +
+    '<button class="btn btn-danger" onclick="deleteCountdownConfirm(\'' + c.id + '\')">' + ICONS.trash + '删除</button>' +
+    '</div></div>';
+  openModal('倒计时详情', html);
+}
+function deleteCountdownConfirm(id){
+  var c = findCountdown(id);
+  if (!c) return;
+  confirmDialog('删除倒计时', '确定删除「' + c.title + '」吗？', function(){
+    db.countdowns = db.countdowns.filter(function(x){ return x.id !== id; });
+    save();
+    renderAll();
+    showToast('已删除');
+  });
+}
+
+/* ---------- 习惯打卡 ---------- */
+function habitStreak(h){
+  var s = 0;
+  var d = new Date();
+  if (!(h.records && h.records[fmtLocal(d)])) d.setDate(d.getDate() - 1);
+  while (h.records && h.records[fmtLocal(d)]){ s++; d.setDate(d.getDate() - 1); }
+  return s;
+}
+function habitTotal(h){
+  var n = 0;
+  for (var k in h.records) if (h.records[k]) n++;
+  return n;
+}
+function heatmapSVG(h, color){
+  var cur = new Date();
+  var dow = (cur.getDay() + 6) % 7; // 0=周一
+  var start = new Date(cur);
+  start.setDate(cur.getDate() - dow - 11 * 7);
+  var today = todayStr();
+  var cells = '';
+  for (var w = 0; w < 12; w++){
+    for (var dd = 0; dd < 7; dd++){
+      var day = new Date(start);
+      day.setDate(start.getDate() + w * 7 + dd);
+      var ds = fmtLocal(day);
+      if (ds > today) continue;
+      var on = h.records && h.records[ds];
+      var fill = on ? color : '#F0E7D8';
+      cells += '<rect x="' + (w * 13) + '" y="' + (dd * 13) + '" width="11" height="11" rx="3" fill="' + fill + '" style="cursor:pointer" onclick="toggleHabitDay(\'' + h.id + '\',\'' + ds + '\')"><title>' + ds + (on ? ' · 已打卡' : '') + '</title></rect>';
+    }
+  }
+  return '<svg class="heatmap" viewBox="0 0 156 91" width="270" height="158" xmlns="http://www.w3.org/2000/svg">' + cells + '</svg>';
+}
+function renderHabits(){
+  var el = document.getElementById('habit-list');
+  if (db.habits.length === 0){
+    el.innerHTML = '<div class="empty-today" style="padding:22px 0"><p>还没有习惯，点右下角 + 建一个</p></div>';
+    return;
+  }
+  var html = '';
+  var today = todayStr();
+  db.habits.forEach(function(h, idx){
+    var color = HABIT_COLORS[idx % HABIT_COLORS.length];
+    var checked = h.records && h.records[today];
+    var streak = habitStreak(h);
+    html += '<div class="habit-card">' +
+      '<div class="habit-top">' +
+      '<span class="habit-dot" style="background:' + color + '"></span>' +
+      '<span class="h-name">' + esc(h.name) + '</span>' +
+      '<span class="h-streak">' + ICONS.flame + '连续 ' + streak + ' 天</span>' +
+      '<button class="icon-btn" onclick="deleteHabitConfirm(\'' + h.id + '\')" title="删除习惯">' + ICONS.trash + '</button>' +
+      '</div>' +
+      '<div class="heatmap-wrap">' + heatmapSVG(h, color) + '</div>' +
+      '<div class="hm-tip">最近 12 周 · 点格子可以补卡 / 取消</div>' +
+      '<div class="habit-foot">' +
+      '<span class="h-total">累计打卡 ' + habitTotal(h) + ' 天</span>' +
+      '<button class="check-btn' + (checked ? ' on' : '') + '" onclick="toggleHabitToday(\'' + h.id + '\')">' + ICONS.checkBig + (checked ? '今日已打卡' : '打卡') + '</button>' +
+      '</div></div>';
+  });
+  el.innerHTML = html;
+}
+function openHabitForm(){
+  var html = '<div class="form">' +
+    '<label class="label">习惯名称</label>' +
+    '<input id="hf-name" class="input" maxlength="20" placeholder="比如：每日阅读 / 背单词 / 运动" value="">' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+    '<button class="btn btn-primary" onclick="saveHabit()">保存</button>' +
+    '</div></div>';
+  openModal('新建习惯', html);
+}
+function saveHabit(){
+  var name = document.getElementById('hf-name').value.trim();
+  if (!name){ showToast('写个习惯名称吧'); return; }
+  db.habits.push({id: uid('h'), name: name, records: {}});
+  save();
+  closeModal();
+  renderAll();
+  showToast('已添加，坚持打卡呀');
+}
+function toggleHabitToday(id){
+  toggleHabitDay(id, todayStr());
+}
+function toggleHabitDay(id, ds){
+  var h = findHabit(id);
+  if (!h) return;
+  if (!h.records) h.records = {};
+  if (h.records[ds]){ delete h.records[ds]; }
+  else { h.records[ds] = true; h.sample = false; }
+  save();
+  renderToday();
+  renderHabits();
+}
+function deleteHabitConfirm(id){
+  var h = findHabit(id);
+  if (!h) return;
+  confirmDialog('删除习惯', '确定删除「' + h.name + '」吗？打卡历史会一起删掉。', function(){
+    db.habits = db.habits.filter(function(x){ return x.id !== id; });
+    save();
+    renderAll();
+    showToast('已删除');
+  });
+}
+
+/* ---------- 数据管理 ---------- */
+function renderData(){
+  var doneCnt = db.tasks.filter(function(t){ return t.status === 'done'; }).length;
+  var totalCheckins = 0;
+  db.habits.forEach(function(h){ for (var k in h.records) if (h.records[k]) totalCheckins++; });
+  document.getElementById('stats-grid').innerHTML =
+    '<div class="stat-box"><div class="stat-num">' + db.tasks.length + '</div><div class="stat-label">任务总数</div></div>' +
+    '<div class="stat-box"><div class="stat-num">' + doneCnt + '</div><div class="stat-label">已完成</div></div>' +
+    '<div class="stat-box"><div class="stat-num">' + db.countdowns.length + '</div><div class="stat-label">倒计时</div></div>' +
+    '<div class="stat-box"><div class="stat-num">' + db.habits.length + '</div><div class="stat-label">打卡习惯</div></div>';
+
+  var hasSample = db.tasks.some(function(t){ return t.sample; }) ||
+                  db.countdowns.some(function(c){ return c.sample; }) ||
+                  db.habits.some(function(h){ return h.sample; });
+  document.getElementById('sample-card').classList.toggle('hidden', !hasSample);
+  if (hasSample){
+    document.getElementById('sample-note').textContent = '有旧版示例数据残留，可以一键清掉。';
+    document.getElementById('sample-btns').innerHTML =
+      '<button class="btn btn-outline" onclick="clearSamples()">清空示例数据</button>';
+  }
+
+  // 备份提醒
+  var total = db.tasks.length + db.countdowns.length + totalCheckins;
+  var banner = document.getElementById('backup-banner');
+  var ack = localStorage.getItem(BACKUP_ACK_KEY);
+  if (total >= 30 && ack !== todayStr()){
+    document.getElementById('backup-text').textContent =
+      '数据已经积累 ' + total + ' 条啦，建议导出一份备份，有备无患～';
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+function dismissBackup(){
+  localStorage.setItem(BACKUP_ACK_KEY, todayStr());
+  document.getElementById('backup-banner').classList.add('hidden');
+}
+function exportJSON(){
+  var payload = {
+    app: 'capybara-task-board',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: db
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '卡皮巴拉任务台备份_' + todayStr() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1200);
+  showToast('备份已导出');
+}
+function importJSONFile(input){
+  var f = input.files && input.files[0];
+  if (!f) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var parsed;
+    try{ parsed = JSON.parse(e.target.result); }
+    catch(err){ showToast('导入失败：文件不是有效的 JSON'); input.value = ''; return; }
+    var d = parsed && parsed.data ? parsed.data : parsed;
+    if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.folders)){
+      showToast('导入失败：文件格式不对');
+      input.value = '';
+      return;
+    }
+    confirmDialog('导入备份', '导入会覆盖当前的全部数据（覆盖前建议先导出一份）。确定继续吗？', function(){
+      db = {
+        folders: d.folders || [],
+        tasks: d.tasks || [],
+        countdowns: d.countdowns || [],
+        habits: d.habits || [],
+        initialized: true
+      };
+      folderFilter = 'all';
+      save();
+      renderAll();
+      showToast('导入成功');
+    });
+  };
+  reader.readAsText(f);
+  input.value = '';
+}
+function clearSamples(){
+  confirmDialog('清空示例数据', '会删掉所有标记为「示例」的任务、倒计时和打卡记录（文件夹保留）。确定吗？', function(){
+    db.tasks = db.tasks.filter(function(t){ return !t.sample; });
+    db.countdowns = db.countdowns.filter(function(c){ return !c.sample; });
+    db.habits = db.habits.filter(function(h){ return !h.sample; });
+    save();
+    renderAll();
+    showToast('示例数据已清空');
+  });
+}
+function clearAll(){
+  confirmDialog('清空全部数据', '所有任务、文件夹、倒计时、打卡记录都会被永久删除，无法恢复！确定要清空吗？', function(){
+    confirmDialog('再次确认', '真的真的要清空吗？建议先「导出 JSON 备份」。这一步之后数据就找不回来了。', function(){
+      db = defaultData();
+      save();
+      folderFilter = 'all';
+      renderAll();
+      showToast('已清空全部数据');
+    });
+  });
+}
+
+/* ---------- 总渲染 ---------- */
+function renderAll(){
+  renderHeader();
+  renderToday();
+  renderTasks();
+  renderCountdowns();
+  renderHabits();
+  renderData();
+}
+
+/* ---------- 工作台名称 ---------- */
+function applyTitle(){
+  var t = '';
+  try{ t = localStorage.getItem(TITLE_KEY) || ''; }catch(e){}
+  var name = t.trim() || '卡皮巴拉任务台';
+  document.getElementById('app-title').textContent = name;
+  document.title = name;
+}
+function openTitleForm(){
+  var cur = '';
+  try{ cur = localStorage.getItem(TITLE_KEY) || ''; }catch(e){}
+  openModal('修改工作台名称',
+    '<div class="form">' +
+    '<label class="label">新名称</label>' +
+    '<input id="wt-name" class="input" maxlength="20" placeholder="比如：小函的任务台" value="' + esc(cur || '卡皮巴拉任务台') + '">' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-outline" onclick="closeModal()">取消</button>' +
+    '<button class="btn btn-primary" onclick="saveTitle()">保存</button>' +
+    '</div></div>');
+  setTimeout(function(){
+    var el = document.getElementById('wt-name');
+    if (el){ el.focus(); el.select(); }
+  }, 50);
+}
+function saveTitle(){
+  var name = document.getElementById('wt-name').value.trim();
+  if (!name){ showToast('写个名字吧'); return; }
+  try{ localStorage.setItem(TITLE_KEY, name); }catch(e){}
+  applyTitle();
+  closeModal();
+  showToast('改名完成～');
+}
+
+/* ---------- 启动 ---------- */
+function injectIcons(){
+  var spans = document.querySelectorAll('[data-icon]');
+  for (var i = 0; i < spans.length; i++){
+    var name = spans[i].getAttribute('data-icon');
+    if (ICONS[name]) spans[i].innerHTML = ICONS[name];
+  }
+  document.getElementById('today-icon').innerHTML = ICONS.alert;
+}
+load();
+injectIcons();
+applyTitle();
+renderAll();
+setTab('tasks');
+</script>
+</body>
+</html>
